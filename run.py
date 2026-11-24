@@ -7,6 +7,7 @@
     python run.py scrape       # optional: real scrape of books.toscrape.com into data/raw/competitor
     python run.py report       # print the main gold tables (or: report invoices | kpis | prices | quality)
     python run.py report --sql "select ..."   # any query against the warehouse
+    python run.py ui           # browse every table in DuckDB's web UI (http://localhost:4213)
 """
 from __future__ import annotations
 
@@ -72,6 +73,21 @@ def cmd_report(name: str | None, sql: str | None) -> None:
             con.sql(query).show(max_width=160, max_rows=40)
 
 
+def cmd_ui() -> None:
+    """Browse the warehouse in DuckDB's web UI. The database is locked while it runs."""
+    import duckdb
+    con = duckdb.connect(str(config.DB_PATH))
+    con.sql("CALL start_ui()")
+    print("\nDuckDB UI running at http://localhost:4213")
+    print("While it runs, ingest/transform cannot write to the database.")
+    try:
+        input("Press Enter (or Ctrl+C) here to stop it.\n")
+    except (KeyboardInterrupt, EOFError):
+        pass
+    con.close()
+    print("UI stopped, database released.")
+
+
 def cmd_scrape() -> None:
     from pipeline import scraper
     scraper.run_snapshot()
@@ -80,12 +96,15 @@ def cmd_scrape() -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report"])
+    ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report", "ui"])
     ap.add_argument("report", nargs="?", choices=list(REPORTS), help="report: show only this one")
     ap.add_argument("--sql", help="report: run your own query against the warehouse")
     args = ap.parse_args()
     if args.command == "report":
         cmd_report(args.report, args.sql)
+        return
+    if args.command == "ui":
+        cmd_ui()
         return
     if args.command in ("generate", "all"):
         cmd_generate()
