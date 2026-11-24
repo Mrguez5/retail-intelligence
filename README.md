@@ -108,6 +108,7 @@ python run.py all                 # generate sources → bronze → dbt build (m
 | `python run.py ingest` | Loads new or changed files into bronze. Run it twice: the second run loads nothing. |
 | `python run.py transform` | `dbt build`: silver and gold models and all data tests |
 | `python run.py scrape` | Optional: a real snapshot of books.toscrape.com into `data/raw/competitor/` |
+| `python run.py report` | Prints the main results: `kpis`, `invoices`, `prices`, `quality` (or `--sql "select …"` for your own query) |
 
 The warehouse is a single file, `data/warehouse/retail.duckdb`. You can open it with the DuckDB
 CLI, DBeaver, Python or Power BI (ODBC).
