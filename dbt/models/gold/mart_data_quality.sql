@@ -10,6 +10,12 @@ matches as (
     where match_method in ('title_exact', 'title_fuzzy')
     group by 1, 2
 ),
+reference_prices as (
+    select 'sales_' || channel as source, 'price_check_used_' || reference_price_source as rule, count(*) as rows_failed
+    from {{ ref('int_sales_checked') }}
+    where reference_price_source in ('weekly_median', 'current_list_price')
+    group by 1, 2
+),
 competitor as (
     select 'competitor_snapshots' as source, dq_issue as rule, count(*) as rows_failed
     from {{ ref('silver_competitor_prices') }}
@@ -48,6 +54,7 @@ invoices as (
 all_checks as (
     select * from sales_rules
     union all select * from matches
+    union all select * from reference_prices
     union all select * from competitor
     union all select * from runs
     union all select * from fx
@@ -73,6 +80,8 @@ select
         when a.rule like 'matched_by_%'                       then 'fixed automatically'
         when a.rule = 'competitor_link_title_match'           then 'fixed automatically'
         when a.rule like 'competitor_link_%'                  then 'no competitor price for this product'
+        when a.rule = 'price_check_used_weekly_median'        then 'no ERP price history: compared with that week''s median price'
+        when a.rule = 'price_check_used_current_list_price'   then 'no history and too few sales: compared with today''s list price'
         when a.rule = 'rate_carried_forward'                  then 'filled with last business-day rate'
         when a.rule in ('partial_run', 'missing_run')         then 'previous observation used'
         when a.source = 'supplier_invoices'                   then 'listed in invoice audit'

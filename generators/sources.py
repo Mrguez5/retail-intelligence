@@ -31,6 +31,27 @@ def write_catalog(w: World, rng: np.random.Generator) -> None:
         config.RAW_CATALOG / "erp_products_export.csv", index=False, encoding="utf-8")
 
 
+# ------------------------------------------------------------------ list price history (ERP)
+def write_price_history(w: World) -> dict:
+    """ERP log of list-price changes: one row each time a price changes.
+
+    Titles migrated from the old ERP have no history (every 12th SKU), so the
+    pipeline needs a fallback for them. Deterministic: does not use the random stream.
+    """
+    rows, missing = [], []
+    for i, sku in enumerate(w.products["sku"]):
+        if int(sku[4:]) % 12 == 0:
+            missing.append(sku)
+            continue
+        prices = w.our_price[i]
+        for d in range(len(w.days)):
+            if d == 0 or prices[d] != prices[d - 1]:
+                rows.append((sku, f"{prices[d]:.2f}", w.days[d].strftime("%Y-%m-%d")))
+    pd.DataFrame(rows, columns=["sku", "list_price_eur", "valid_from"]).to_csv(
+        config.RAW_CATALOG / "erp_price_changes.csv", index=False)
+    return {"rows": len(rows), "skus_without_history": len(missing)}
+
+
 # ------------------------------------------------------------------ supplier contracts (Excel)
 def write_contracts(w: World) -> None:
     _reset(config.RAW_CONTRACTS)

@@ -27,6 +27,11 @@ SUPPLIERS = {
 }
 PLW_PRICE_INCREASE = dt.date(2026, 7, 1)
 REPRICING_DAYS = [dt.date(2026, 4, 1), dt.date(2026, 8, 1)]
+# One title is put on clearance at 28 % of its price. Earlier full-price sales of it are
+# correct, but more than 3x today's list price: a check against the CURRENT price would
+# flag them by mistake. The pipeline must compare with the price valid on the sale date.
+CLEARANCE_DAY = dt.date(2026, 9, 1)
+CLEARANCE_FACTOR = 0.28
 
 
 @dataclass
@@ -40,6 +45,7 @@ class World:
     our_price: np.ndarray         # [product, day] EUR
     contract: pd.DataFrame        # supplier, sku, unit_cost_eur, valid_from, valid_to
     sales_lines: pd.DataFrame     # true sales events (before any source mess)
+    clearance: dict | None = None # the clearance title (sku, day, prices)
 
 
 def _stable_hash(text: str) -> int:
@@ -112,7 +118,6 @@ def build(rng: np.random.Generator) -> World:
                 if rng.random() < 0.6:                         # only part of the catalogue is fixed
                     current[i] = _charm_price(comp_eur[i, d] * 1.02)
         our[:, d] = current
-    products["list_price_eur"] = our[:, -1]
 
     # ---------------------------------------------------------------- contracts
     base_cost = np.round(our[:, 0] * rng.uniform(0.52, 0.62, N_PRODUCTS), 2)
@@ -142,6 +147,17 @@ def build(rng: np.random.Generator) -> World:
                 q = int(min(left, rng.choice([1, 1, 1, 1, 2, 2, 3])))
                 lines.append((day, i, q))
                 left -= q
+    # clearance: applied after demand so the random stream (and every other number) is unchanged;
+    # the title is the most expensive of the better-selling half of the catalogue
+    cday = days.get_loc(pd.Timestamp(CLEARANCE_DAY))
+    popular = products["popularity"].to_numpy() >= np.median(products["popularity"])
+    ci = int(np.argmax(np.where(popular, our[:, cday], -1)))
+    before = float(our[ci, cday - 1])
+    our[ci, cday:] = _charm_price(before * CLEARANCE_FACTOR)
+    clearance = {"sku": products.loc[ci, "sku"], "day": CLEARANCE_DAY.isoformat(),
+                 "price_before": before, "price_after": float(our[ci, cday])}
+    products["list_price_eur"] = our[:, -1]
+
     sales = pd.DataFrame(lines, columns=["date", "pidx", "qty"])
     sales["sku"] = products["sku"].to_numpy()[sales["pidx"]]
     sales["unit_price_eur"] = our[sales["pidx"], days.get_indexer(sales["date"])]
@@ -153,4 +169,5 @@ def build(rng: np.random.Generator) -> World:
     return World(
         days=days, competitor=comp, comp_price_gbp=price, comp_in_stock=in_stock,
         fx=eur_gbp, products=products, our_price=our, contract=contract, sales_lines=sales,
+        clearance=clearance,
     )

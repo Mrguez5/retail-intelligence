@@ -77,7 +77,8 @@ def read_invoice(path: Path) -> dict[str, pd.DataFrame]:
 
 
 SOURCES = [
-    Source("erp_products", config.RAW_CATALOG, "*.csv", _single("erp_products", read_csv)),
+    Source("erp_products", config.RAW_CATALOG, "erp_products*.csv", _single("erp_products", read_csv)),
+    Source("erp_price_changes", config.RAW_CATALOG, "erp_price_changes*.csv", _single("erp_price_changes", read_csv)),
     Source("contract_prices", config.RAW_CONTRACTS, "*.xlsx", _single("contract_prices", read_excel)),
     Source("fx_rates", config.RAW_FX, "*.csv", _single("fx_rates", read_csv)),
     Source("competitor_snapshots", config.RAW_COMPETITOR, "*.csv", _single("competitor_snapshots", read_csv)),

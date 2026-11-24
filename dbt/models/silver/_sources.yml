@@ -5,6 +5,7 @@ sources:
     schema: bronze
     tables:
       - name: erp_products
+      - name: erp_price_changes
       - name: contract_prices
       - name: fx_rates
       - name: competitor_snapshots

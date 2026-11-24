@@ -25,6 +25,9 @@ def generate_all() -> dict:
     report["marketplace"] = sources.write_sales_marketplace(w, rng)
     report["store"] = sources.write_sales_store(w, rng)
     report["invoices"] = invoices.write_invoices(w, rng)
+    # written last and without the random stream, so every other file stays identical
+    report["price_history"] = sources.write_price_history(w)
+    report["clearance"] = w.clearance
     # what was injected, so tests can check the pipeline finds exactly this
     (config.RAW / "_injected_defects.json").write_text(json.dumps(report, indent=2, default=str))
     return report

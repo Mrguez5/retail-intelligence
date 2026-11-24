@@ -1,7 +1,7 @@
 # Retail Price & Procurement Intelligence
 
 An end-to-end data platform for a (fictional) online bookseller: four messy real-world
-sources go into a **bronze → silver → gold lakehouse** in DuckDB + dbt, with **98 automated
+sources go into a **bronze → silver → gold lakehouse** in DuckDB + dbt, with **109 automated
 data tests**. The output answers three business questions:
 
 1. **Are we more expensive than the competitor, and what does it cost us?**
@@ -23,7 +23,7 @@ flowchart LR
         A1["Competitor scraper<br/>85 runs × 1,000 books<br/>CSV, GBP"]
         A2["Supplier invoices<br/>41 PDFs, 2 layouts<br/>EN + ES formats"]
         A3["Sales: web CSV · marketplace CSV (;) ·<br/>shop Excel typed by hand"]
-        A4["ERP catalogue · contract prices (Excel) ·<br/>EUR/GBP rates"]
+        A4["ERP catalogue + price history · contract prices (Excel) ·<br/>EUR/GBP rates"]
     end
     subgraph Bronze["Bronze (Python)"]
         B["Text as delivered<br/>+ lineage columns<br/>incremental by file hash"]
@@ -54,7 +54,7 @@ flowchart LR
 |---|---|
 | Net revenue | **€1.05 M** across 3 channels, 24,691 books sold |
 | Gross margin | **35.1 %** after marketplace commission and supplier cost |
-| Price position | Inkwell was **+3.1 % above the competitor in January**. After the April and August repricing it was **3.3 % below**. |
+| Price position | Inkwell was **+3.2 % above the competitor in January**. After the April and August repricing it was **2.9 % below**. |
 | Price elasticity | Products priced *much higher* (>10 %) than the competitor sell **22 % fewer units a week** than products priced *lower* (2.82 vs 3.64). |
 | Supplier invoices | **€9,695 at risk** in 12 of 41 invoices: one invoice sent twice (€8,543), a price increase billed two weeks early, 10 lines above contract, and 2 totals that don't add up |
 
@@ -69,7 +69,8 @@ unless the pipeline finds **exactly** those defects.
 | Marketplace CSV | Monthly exports overlap by 3 days | 590 | De-duplicated (copy from the latest export kept) |
 | Marketplace CSV | Seller SKU missing | 697 | Matched by title |
 | Shop Excel | No SKU, titles typed by hand (case, missing or swapped letters) | 3,289 | Exact title key, then fuzzy match (Damerau-Levenshtein ≤ 2 or Jaro-Winkler ≥ 0.95); score kept for audit |
-| Shop Excel | Price typed ×10 (14.99 → 149.9) | 16 | Quarantined (`price_outlier`) |
+| Shop Excel | Price typed ×10 (14.99 → 149.9) | 16 | Quarantined (`price_outlier`): compared with the price valid **on the sale date**, not today's |
+| ERP | 20 titles migrated without price history | 1,893 lines | Price check falls back to that week's median price (≥ 3 sales), then to today's list price |
 | Shop Excel | Gift cards sold through the till (not books) | 25 | Quarantined (`unknown_product`) |
 | Shop Excel | Missing quantity · dates as text | 8 · 162 | Quarantined · parsed |
 | Competitor scraper | Price 0.00 or ×100 (parser glitch) | 34 | Observation ignored |
@@ -81,15 +82,24 @@ unless the pipeline finds **exactly** those defects.
 Every bronze sales row ends up in `silver_sales` or in `silver_sales_quarantine`. A
 reconciliation test checks that no row is lost.
 
+**Why the price check uses the price on the sale date.** One title goes on clearance on 1 September
+(€73.99 → €20.49). Its 48 earlier sales at full price are correct, but they are more than 3× today's
+price. Comparing with the current ERP price would quarantine all 48 by mistake (64 flagged instead of 16).
+The pipeline compares each sale with (A) the ERP list-price history, (B) if a title has no history,
+the median price of that title that week across channels, or (C) as a last resort today's list price.
+The source used is stored on every row (`reference_price_source`), and a test fails if any clearance
+sale is flagged.
+
 ## Techniques shown
 
 - **Medallion architecture** with lineage columns and an ingestion log
 - **Incremental, idempotent ingestion** by content hash, with schema-drift handling
 - **PDF extraction** of two supplier layouts (pdfplumber + one regex per layout), with raw values kept for replay
-- **Type-2 history (SCD2)**: contract prices with validity periods, and competitor prices built with gaps-and-islands
+- **Type-2 history (SCD2)**: contract prices and list prices with validity periods, and competitor prices built with gaps-and-islands
+- **Point-in-time validation**: each sale checked against the price valid that day, with a two-level fallback
 - **ASOF join** for the latest competitor price at the end of each day, with a "days since observed" column
 - **Fuzzy matching** of hand-typed titles, with the score and edit distance kept for audit
-- **Data-quality framework**: a verdict per row, quarantine tables, a `mart_data_quality` summary and 98 dbt tests (generic, custom generic and singular)
+- **Data-quality framework**: a verdict per row, quarantine tables, a `mart_data_quality` summary and 109 dbt tests (generic, custom generic and singular)
 - **Polite live scraper** (`python run.py scrape`): robots.txt, delays, retries with back-off. It writes the same file shape as the simulated runs.
 - **CI**: GitHub Actions builds the whole platform from scratch and checks that a second ingest loads nothing
 

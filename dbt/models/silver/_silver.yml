@@ -14,6 +14,29 @@ models:
       - name: list_price_eur
         data_tests: [not_null]
 
+  - name: silver_list_price_history
+    description: Inkwell list prices from the ERP change log, one row per price period (type-2 history).
+    columns:
+      - name: sku
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('silver_products'), field: sku}}
+      - name: list_price_eur
+        data_tests: [not_null]
+      - name: valid_from
+        data_tests: [not_null]
+
+  - name: int_sales_checked
+    description: Every sales line with its reference price (ERP history, weekly median or current list price) and verdict.
+    columns:
+      - name: sale_line_id
+        data_tests: [unique, not_null]
+      - name: reference_price_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [erp_history, weekly_median, current_list_price]
+
   - name: silver_contract_prices
     description: Supplier contract prices, one row per validity period (type-2 history).
     columns:
