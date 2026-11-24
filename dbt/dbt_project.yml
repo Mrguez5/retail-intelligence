@@ -10,7 +10,14 @@ target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
 vars:
-  raw_dir: "data/raw"          # relative to the repo root (run.py runs dbt from there)
+  raw_dir: "{{ env_var('RI_RAW_DIR', 'data/raw') }}"   # set by run.py; default relative to the repo root
+  data_start: "2026-01-01"      # sales dated before this are typing errors
+  max_units_per_line: 20        # a sales line with more units (or returns) than this is a typing error
+  max_price_age_days: 7         # a competitor price older than this is not used
+  max_fx_age_days: 5            # an FX rate carried forward longer than this is not used
+  # tests that compare the pipeline with the defects the generator injected;
+  # run with --vars '{simulation: false}' on real client data
+  simulation: true
 
 models:
   retail_intelligence:

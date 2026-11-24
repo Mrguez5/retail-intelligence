@@ -27,6 +27,8 @@ select
     l.lines_total,
     round(l.lines_total * h.vat_rate, 2)                          as vat_expected,
     round(l.lines_total + round(l.lines_total * h.vat_rate, 2), 2) as total_expected,
-    row_number() over (partition by h.supplier_code, h.invoice_number order by h.source_file) > 1 as is_duplicate
+    -- the copy received first is the original; later copies are duplicates
+    row_number() over (partition by h.supplier_code, h.invoice_number
+                       order by h.ingested_at, h.source_file) > 1 as is_duplicate
 from h
 left join lines l using (source_file)

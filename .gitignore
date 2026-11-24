@@ -12,3 +12,4 @@ logs/
 ~$*
 # generated HTML page (the PDF is versioned)
 docs/*.html
+.pytest_cache/

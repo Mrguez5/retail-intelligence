@@ -73,7 +73,7 @@ Customer country (ISO 3166 alpha-2). Marketplace and shop sales are recorded as 
 {% enddocs %}
 
 {% docs col_dedup_key %}
-Key used to detect the same line arriving twice. Marketplace: order number (monthly exports overlap). Web and shop: `sale_line_id` (no overlap).
+Business key used to detect the same line arriving twice (overlapping exports, a file re-sent under another name). Marketplace: order number. Web: order number + SKU. Shop (no order number): date + title + units + price. Web and shop keys end in `#n`, the occurrence inside the file, so two identical sales in one file stay two.
 {% enddocs %}
 
 {% docs col_source_file %}
@@ -93,7 +93,7 @@ Damerau-Levenshtein distance (missing, extra or swapped characters) between the 
 {% enddocs %}
 
 {% docs col_dedup_rank %}
-1 = the copy that is kept; 2 or more = a repeated copy of the same line (newest export kept).
+1 = the copy that is kept; 2 or more = a repeated copy of the same line. In `int_sales_matched`: newest export first. In `int_sales_checked` (final): the valid copy first, then the newest export.
 {% enddocs %}
 
 {% docs col_list_price_eur_current %}
@@ -150,4 +150,8 @@ Invoice number printed by the supplier (`NWD-2026-0001`, `F26/0001`). Not unique
 
 {% docs col_week_start %}
 Monday of the ISO week.
+{% enddocs %}
+
+{% docs col_price_date %}
+Date whose prices apply to the line: the sale date, or for a web return the date of the original sale (so the return is checked and costed with the price it was sold at).
 {% enddocs %}

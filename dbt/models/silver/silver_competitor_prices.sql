@@ -24,6 +24,7 @@ select
         when scraped_at is null              then 'invalid_timestamp'
         when price_gbp is null               then 'price_not_numeric'
         when price_gbp <= 0                  then 'price_zero_or_negative'
-        when price_gbp > 5 * median_price_gbp then 'price_outlier'
+        when price_gbp > 5 * median_price_gbp
+          or price_gbp < median_price_gbp / 5 then 'price_outlier'   -- x100 or /100 read errors
     end                                      as dq_issue
 from with_history

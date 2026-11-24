@@ -3,5 +3,5 @@ retail_intelligence:
   outputs:
     local:
       type: duckdb
-      path: data/warehouse/retail.duckdb   # relative to the repo root
+      path: "{{ env_var('RI_DB_PATH', 'data/warehouse/retail.duckdb') }}"   # set by run.py; default relative to the repo root
       threads: 4

@@ -1,3 +1,4 @@
+{{ config(enabled=var('simulation')) }}  -- only meaningful on generated data
 -- The clearance title sold at full price before its markdown. Those sales are correct and
 -- must not be flagged as price outliers just because today's price is much lower.
 -- (The only outliers allowed are real typos: a price typed x10.)

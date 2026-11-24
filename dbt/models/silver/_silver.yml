@@ -86,10 +86,11 @@ models:
         description: Calendar day.
         data_tests: [unique, not_null]
       - name: eur_gbp
-        description: Pounds per one euro on that day.
-        data_tests: [not_null]
+        description: Pounds per one euro on that day. Empty if the last valid rate is older than max_fx_age_days (5).
       - name: is_carried_forward
-        description: True when the source had no rate that day and the previous business day's rate is used.
+        description: True when the source had no valid rate that day and the last one is carried forward.
+      - {name: days_since_rate, description: "Days since the last valid rate (0 = rate of that day)."}
+      - {name: is_rejected_rate, description: "True if the source gave a rate that day but it was rejected (empty or outside 0.5-1.5)."}
 
   # ------------------------------------------------------------------ competitor
   - name: silver_competitor_runs
@@ -140,7 +141,7 @@ models:
       - name: median_price_gbp
         description: Median price of this book over all runs, used to spot absurd values.
       - name: dq_issue
-        description: '{{ doc("col_dq_issue") }} Values: invalid_timestamp, price_not_numeric, price_zero_or_negative, price_outlier (more than 5× its median).'
+        description: '{{ doc("col_dq_issue") }} Values: invalid_timestamp, price_not_numeric, price_zero_or_negative, price_outlier (more than 5× or less than 1/5 of its median).'
         data_tests:
           - accepted_values:
               arguments:
@@ -262,6 +263,7 @@ models:
       - {name: match_method, description: '{{ doc("col_match_method") }}'}
       - {name: match_score, description: '{{ doc("col_match_score") }}'}
       - {name: match_edits, description: '{{ doc("col_match_edits") }}'}
+      - {name: match_ambiguous, description: "True if two catalogue titles were equally close to the typed title: no product is chosen."}
       - {name: dedup_rank, description: '{{ doc("col_dedup_rank") }}'}
 
   - name: int_sales_checked
@@ -289,8 +291,11 @@ models:
       - {name: match_method, description: '{{ doc("col_match_method") }}'}
       - {name: match_score, description: '{{ doc("col_match_score") }}'}
       - {name: match_edits, description: '{{ doc("col_match_edits") }}'}
-      - {name: dedup_rank, description: '{{ doc("col_dedup_rank") }}'}
+      - {name: match_ambiguous, description: "True if two catalogue titles were equally close to the typed title."}
+      - {name: original_sale_line_id, description: "For a web return: the sale line it returns. Empty otherwise."}
+      - {name: price_date, description: '{{ doc("col_price_date") }}'}
       - {name: list_price_eur, description: '{{ doc("col_list_price_eur_current") }}'}
+      - {name: dedup_rank, description: '{{ doc("col_dedup_rank") }}'}
       - {name: reference_price_eur, description: '{{ doc("col_reference_price_eur") }}'}
       - name: reference_price_source
         description: '{{ doc("col_reference_price_source") }}'
@@ -299,7 +304,7 @@ models:
               arguments:
                 values: [erp_history, weekly_median, current_list_price]
       - name: dq_issue
-        description: '{{ doc("col_dq_issue") }} Values, in the order they are checked: duplicate_line, invalid_date, unknown_product, missing_quantity, zero_quantity, invalid_price, price_outlier (more than 3× or less than 0.3× the reference price).'
+        description: '{{ doc("col_dq_issue") }} Values, in the order they are checked: invalid_date, date_out_of_range (before data_start or in the future), ambiguous_product, unknown_product, missing_quantity, zero_quantity, quantity_outlier (more than max_units_per_line units), invalid_price, price_outlier (more than 3× or less than 0.3× the reference price); then duplicate_line for every copy that is not kept.'
 
   - name: silver_sales
     description: Clean, de-duplicated sales lines from the three channels (lines with no data-quality issue).
@@ -338,6 +343,8 @@ models:
       - {name: discount_pct, description: '{{ doc("col_discount_pct") }}'}
       - {name: commission_eur, description: '{{ doc("col_commission_eur") }}'}
       - {name: country, description: '{{ doc("col_country") }}'}
+      - {name: price_date, description: '{{ doc("col_price_date") }}'}
+      - {name: original_sale_line_id, description: "For a web return: the sale line it returns. Empty otherwise."}
       - {name: source_file, description: '{{ doc("col_source_file") }}'}
 
   - name: silver_sales_quarantine
@@ -365,8 +372,8 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: [duplicate_line, invalid_date, unknown_product, missing_quantity,
-                         zero_quantity, invalid_price, price_outlier]
+                values: [duplicate_line, invalid_date, date_out_of_range, ambiguous_product, unknown_product,
+                         missing_quantity, zero_quantity, quantity_outlier, invalid_price, price_outlier]
       - {name: source_file, description: '{{ doc("col_source_file") }}'}
 
   # ------------------------------------------------------------------ supplier invoices

@@ -41,9 +41,14 @@ def cmd_ingest() -> None:
 def cmd_transform() -> None:
     dbt_dir = config.ROOT / "dbt"
     exe = os.path.join(os.path.dirname(sys.executable), "dbt")
-    env = {**os.environ, "DBT_PROFILES_DIR": str(dbt_dir)}
-    # run from the repo root: the profile and vars use paths relative to it
-    res = subprocess.run([exe, "build", "--project-dir", str(dbt_dir)], env=env, cwd=config.ROOT)
+    env = {**os.environ, "DBT_PROFILES_DIR": str(dbt_dir),
+           "RI_DB_PATH": str(config.DB_PATH), "RI_RAW_DIR": config.RAW.as_posix()}
+    cmd = [exe, "build", "--project-dir", str(dbt_dir)]
+    if os.environ.get("RI_SIMULATION") == "0":      # real (or deliberately broken) data: skip simulation-only tests
+        cmd += ["--vars", "{simulation: false}"]
+    if "RI_DATA_DIR" in os.environ:                 # isolated run: keep dbt's artifacts and logs out of the repo
+        cmd += ["--target-path", str(config.DATA / "dbt_target"), "--log-path", str(config.DATA / "dbt_logs")]
+    res = subprocess.run(cmd, env=env, cwd=config.ROOT)
     if res.returncode != 0:
         sys.exit(res.returncode)
 

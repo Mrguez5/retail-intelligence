@@ -186,8 +186,20 @@ sources:
           - *batch_id
           - *ingested_at
 
+      - name: _schema_changes
+        description: One row each time a source file brings a column bronze did not have (often a renamed column).
+        meta: {primary_key: [table_name, column_name], grain: "one row per new column"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [table_name, column_name]}}
+        columns:
+          - {name: batch_id, description: "Ingestion run that found the column."}
+          - {name: table_name, description: "Bronze table that received the column."}
+          - {name: column_name, description: "Name of the new column (made SQL-friendly)."}
+          - {name: source_file, description: "First file that brought it."}
+          - {name: detected_at, description: "When it was detected."}
+
       - name: _ingestion_log
-        description: One row per file per ingestion run, with the outcome. Used to skip files already loaded.
+        description: One row per file and ingestion run that needed an action, with the outcome. The latest row of a file is its current state.
         meta: {primary_key: [batch_id, source_file], grain: "one row per file per ingestion run"}
         data_tests:
           - unique_combination: {arguments: {columns: [batch_id, source_file]}}
@@ -196,7 +208,7 @@ sources:
           - {name: source, description: "Bronze table the file belongs to."}
           - {name: source_file, description: "File path relative to the repository root."}
           - {name: file_hash, description: "SHA-256 of the file content."}
-          - {name: status, description: "LOADED or FAILED."}
+          - {name: status, description: "LOADED (rows written), FAILED (could not be read or written), DUPLICATE_FILE (same content as a file already loaded: not loaded) or REMOVED (file gone from the landing zone: rows taken out)."}
           - {name: rows_loaded, description: "Rows written to bronze (0 if it failed)."}
-          - {name: error, description: "Why the file could not be read (only when FAILED)."}
+          - {name: error, description: "Why the file was not loaded (FAILED, DUPLICATE_FILE, REMOVED)."}
           - {name: ingested_at, description: "When the file was processed."}

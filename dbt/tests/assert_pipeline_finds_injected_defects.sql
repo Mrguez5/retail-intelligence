@@ -1,3 +1,4 @@
+{{ config(enabled=var('simulation')) }}  -- only meaningful on generated data
 -- The generator records every defect it injects; the pipeline must find exactly those
 with injected as (
     select * from read_json_auto('{{ var("raw_dir") }}/_injected_defects.json')

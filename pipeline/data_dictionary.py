@@ -91,6 +91,8 @@ def _tests(manifest: dict, tables: dict) -> tuple[dict, dict, list]:
             sql = (config.ROOT / "dbt" / n["original_file_path"]).read_text(encoding="utf-8")
             header = []                                      # the leading "--" comment block explains the test
             for line in sql.splitlines():
+                if line.strip().startswith("{{"):            # config() line before the comment
+                    continue
                 if not line.strip().startswith("--"):
                     break
                 header.append(line.strip()[2:].strip())

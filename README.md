@@ -46,8 +46,8 @@ flowchart LR
 
 | Layer | Tool | Rule |
 |---|---|---|
-| **Bronze** | Python + DuckDB | No business logic. Every value is stored as text, exactly as delivered, with `_source_file`, `_file_hash`, `_batch_id`, `_ingested_at` and `_row_number`. A file is loaded once per content hash. A changed file replaces its own rows. A file that cannot be read is logged as `FAILED` and the run carries on. New columns are added automatically (schema drift). |
-| **Silver** | dbt | Types, parsing (`1.234,56 €` and `1,234.56 EUR`, `dd/mm/yyyy` and ISO), de-duplication, product matching, one data-quality verdict per row. Bad rows go to quarantine with their reason; nothing is dropped silently. |
+| **Bronze** | Python + DuckDB | No business logic. Every value is stored as text, exactly as delivered, with `_source_file`, `_file_hash`, `_batch_id`, `_ingested_at` and `_row_number`. A file is loaded once per content hash; a changed file replaces its own rows; a file re-sent under another name is not loaded twice; a file removed from the source has its rows taken out; any file that cannot be read or written is logged as `FAILED` (nothing half-written stays) and the run carries on. New columns are added and recorded (schema drift). |
+| **Silver** | dbt | Types, parsing (`1.234,56 €` and `1,234.56 EUR`, `dd/mm/yyyy` and ISO), product matching, one data-quality verdict per row, **then** de-duplication (the valid copy of a line always wins). Bad rows go to quarantine with their reason; nothing is dropped silently. |
 | **Gold** | dbt | Star schema and business marts, ready for a dashboard or Power BI. |
 
 ## What the data shows (Jan–Oct 2026)
@@ -68,21 +68,40 @@ unless the pipeline finds **exactly** those defects.
 
 | Source | Problem | Rows | What the pipeline does |
 |---|---|---|---|
-| Marketplace CSV | Monthly exports overlap by 3 days | 590 | De-duplicated (copy from the latest export kept) |
+| Marketplace CSV | Monthly exports overlap by 3 days | 590 | De-duplicated (the valid copy from the latest export kept) |
 | Marketplace CSV | Seller SKU missing | 697 | Matched by title |
 | Shop Excel | No SKU, titles typed by hand (case, missing or swapped letters) | 3,289 | Exact title key, then fuzzy match (Damerau-Levenshtein ≤ 2 or Jaro-Winkler ≥ 0.95); score kept for audit |
 | Shop Excel | Price typed ×10 (14.99 → 149.9) | 16 | Quarantined (`price_outlier`): compared with the price valid **on the sale date**, not today's |
 | ERP | 20 titles migrated without price history | 1,893 lines | Price check falls back to that week's median price (≥ 3 sales), then to today's list price |
 | Shop Excel | Gift cards sold through the till (not books) | 25 | Quarantined (`unknown_product`) |
 | Shop Excel | Missing quantity · dates as text | 8 · 162 | Quarantined · parsed |
-| Competitor scraper | Price 0.00 or ×100 (parser glitch) | 34 | Observation ignored |
-| Competitor scraper | 2 runs missing, 1 run stopped half way | 3 runs | Last valid price carried forward (ASOF join) |
+| Competitor scraper | Price 0.00, ×100 or ÷100 (parser glitch) | 34 | Observation ignored |
+| Competitor scraper | 2 runs missing, 1 run stopped half way | 3 runs | Last valid price carried forward (ASOF join), for 7 days at most |
 | ERP | Product without a link to the competitor page | 45 | Linked by unique title |
-| FX rates | Weekends and holidays have no rate | 88 days | Last business-day rate, flagged |
+| FX rates | Weekends and holidays have no rate | 86 days | Last business-day rate, flagged, for 5 days at most; rates outside 0.5–1.5 rejected |
 | Supplier PDFs | Duplicate · wrong total · price above contract | 1 · 2 · 25 lines | Listed in the invoice audit with the amount at risk |
 
 Every bronze sales row ends up in `silver_sales` or in `silver_sales_quarantine`. A
 reconciliation test checks that no row is lost.
+
+### Damage the pipeline is built to survive
+
+Beyond the defects above, `tests/test_robustness.py` breaks the landing zone on purpose in an isolated copy and checks the result (`python -m pytest -q`, also run in CI):
+
+| Damage | Without protection | What happens now |
+|---|---|---|
+| A file that is not a valid PDF | the whole load stopped | logged as `FAILED`, reported in `mart_data_quality`, the run carries on |
+| A month of web sales re-sent under another name | revenue of that month doubled | identical file not loaded again (`DUPLICATE_FILE`) |
+| The shop's month copied into a new Excel | sales doubled | line-level business key (date + title + units + price) finds the copies |
+| A re-export with a renamed column | 619 valid lines replaced by broken copies | lines validated **before** de-duplication: the valid copy wins; the new column is recorded |
+| A sale dated 2062 or before the data starts | the whole gold layer failed to build | quarantined as `date_out_of_range` |
+| 100 units typed instead of 1 | accepted | quarantined as `quantity_outlier` |
+| A source file deleted | its rows stayed forever | rows taken out of bronze (`REMOVED`) |
+| An FX rate of 0 | prices divided by zero | rate rejected, previous one carried |
+| A typed title equally close to two books (Vol. 4 / Vol. 6) | one picked silently | quarantined as `ambiguous_product` |
+
+Returns are checked and costed with the price and cost of the **original sale**, and the calendar, KPIs and
+data-quality checks take their date ranges from the data (no dates written in the code).
 
 **Why the price check uses the price on the sale date.** One title goes on clearance on 1 September
 (€73.99 → €20.49). Its 48 earlier sales at full price are correct, but they are more than 3× today's
@@ -95,16 +114,17 @@ sale is flagged.
 ## Techniques shown
 
 - **Medallion architecture** with lineage columns and an ingestion log
-- **Incremental, idempotent ingestion** by content hash, with schema-drift handling
+- **Incremental, idempotent ingestion** by content hash: changed, re-sent, removed and unreadable files all handled and logged, schema drift recorded
 - **PDF extraction** of two supplier layouts (pdfplumber + one regex per layout), with raw values kept for replay
 - **Type-2 history (SCD2)**: contract prices and list prices with validity periods, and competitor prices built with gaps-and-islands
 - **Point-in-time validation**: each sale checked against the price valid that day, with a two-level fallback
 - **ASOF join** for the latest competitor price at the end of each day, with a "days since observed" column
 - **Fuzzy matching** of hand-typed titles, with the score and edit distance kept for audit
-- **Data-quality framework**: a verdict per row, quarantine tables, a `mart_data_quality` summary and 143 dbt tests (generic, custom generic and singular, including a primary-key test on every table)
+- **Data-quality framework**: a verdict per row, validation before de-duplication, quarantine tables, a `mart_data_quality` summary and 143 dbt tests (generic, custom generic and singular, including a primary-key test on every table)
 - **Polite live scraper** (`python run.py scrape`): robots.txt, delays, retries with back-off. It writes the same file shape as the simulated runs.
 - **Documentation as code**: table and column descriptions live in the dbt YAML (shared texts as dbt doc blocks); the data dictionary is generated from them plus the warehouse, so it cannot drift from the code
-- **CI**: GitHub Actions builds the whole platform from scratch and checks that a second ingest loads nothing
+- **Robustness tests** (pytest): the landing zone is damaged on purpose in an isolated copy and the results are checked
+- **CI**: GitHub Actions builds the whole platform from scratch, checks that a second ingest loads nothing and runs the robustness tests
 
 ## Run it
 
@@ -119,7 +139,8 @@ python run.py all                 # generate sources → bronze → dbt build (m
 |---|---|
 | `python run.py generate` | (Re)creates the fictional source files in `data/raw/` (same seed, same files) |
 | `python run.py ingest` | Loads new or changed files into bronze. Run it twice: the second run loads nothing. |
-| `python run.py transform` | `dbt build`: silver and gold models and all data tests |
+| `python run.py transform` | `dbt build`: silver and gold models and all data tests. On real data set `RI_SIMULATION=0` to skip the two tests that compare with the generator's defect list |
+| `python -m pytest -q` | Robustness tests: breaks the input on purpose in a temporary copy (about 35 s) |
 | `python run.py scrape` | Optional: a real snapshot of books.toscrape.com into `data/raw/competitor/` |
 | `python run.py report` | Prints the main results: `kpis`, `invoices`, `prices`, `quality` (or `--sql "select …"` for your own query) |
 | `python run.py ui` | Opens every table in DuckDB's web UI at http://localhost:4213 (press Enter in the terminal to close it) |
@@ -137,6 +158,7 @@ pipeline/            bronze.py (ingestion), pdf_invoices.py, scraper.py, config.
 dbt/models/silver/   staging, matching, quarantine, SCD2 histories
 dbt/models/gold/     dim_*, fct_*, mart_*
 dbt/tests/           reconciliation, SCD2 continuity, invoice arithmetic, injected-defects check
+tests/               robustness tests (pytest): damaged input in an isolated copy
 run.py               one entry point for every step
 ```
 

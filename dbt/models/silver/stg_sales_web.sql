@@ -1,3 +1,6 @@
+-- Web shop lines typed and put in the common sales shape.
+-- dedup_key = order + product (+ occurrence inside the file), so the same order line
+-- delivered again in another file is recognised as a copy.
 select
     _source_file || ':' || _row_number                     as sale_line_id,
     'web'                                                  as channel,
@@ -10,6 +13,8 @@ select
     coalesce(try_cast(discount_pct as decimal(5, 2)), 0)   as discount_pct,
     cast(0 as decimal(12, 2))                              as commission_eur,
     nullif(trim(customer_country), '')                     as country,
-    _source_file || ':' || _row_number                     as dedup_key,   -- monthly files do not overlap
+    trim(order_id) || '|' || coalesce(trim(sku), '') || '#'
+        || row_number() over (partition by _source_file, trim(order_id), trim(sku)
+                              order by cast(_row_number as integer))      as dedup_key,
     _source_file                                           as source_file
 from {{ source('bronze', 'sales_web') }}
