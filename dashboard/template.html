@@ -498,6 +498,18 @@ function renderQuality() {
     { label: "What the pipeline did", key: "action" }], DATA.quality);
 }
 
+/* ------------------------------------------------------------------ template opened directly */
+if (!DATA) {                                           // explain instead of showing an empty page
+  document.querySelector("nav.tabs").remove();
+  document.querySelectorAll('section[role="tabpanel"]').forEach(s => s.remove());
+  const box = el("div", { class: "card" });
+  box.append(el("h2", {}, "This is the dashboard template, without data"),
+    el("p", { class: "desc" }, "Build the dashboard with:  python run.py dashboard"),
+    el("p", { class: "desc" }, "then open docs/index.html (its data placeholder is filled from the gold layer)."));
+  document.querySelector("footer").before(box);
+  throw new Error("dashboard template opened without data: run `python run.py dashboard` and open docs/index.html");
+}
+
 /* ------------------------------------------------------------------ tabs, theme, resize */
 const tabs = [...document.querySelectorAll('[role="tab"]')];
 const renderers = { overview: renderOverview, prices: renderPrices, invoices: renderInvoices, quality: renderQuality };
