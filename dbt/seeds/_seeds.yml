@@ -1,0 +1,28 @@
+version: 2
+
+seeds:
+  - name: suppliers
+    description: Reference list of suppliers, maintained by hand in dbt/seeds/suppliers.csv.
+    config:
+      meta: {primary_key: [supplier_code], grain: "one row per supplier"}
+    columns:
+      - name: supplier_code
+        description: '{{ doc("col_supplier_code") }}'
+        data_tests: [unique, not_null]
+      - {name: supplier_name, description: "Legal name."}
+      - {name: country, description: "Country (ISO code)."}
+      - {name: invoice_layout, description: "Invoice PDF format the parser expects from this supplier."}
+      - {name: vat_rate, description: "VAT rate applied on its invoices."}
+      - {name: payment_terms_days, description: "Days to pay its invoices."}
+
+  - name: channels
+    description: Reference list of sales channels, maintained by hand in dbt/seeds/channels.csv.
+    config:
+      meta: {primary_key: [channel], grain: "one row per channel"}
+    columns:
+      - name: channel
+        description: '{{ doc("col_channel") }}'
+        data_tests: [unique, not_null]
+      - {name: channel_name, description: "Display name."}
+      - {name: source_format, description: "How the channel delivers its sales data."}
+      - {name: commission_rate, description: "Commission the channel keeps (0.15 = 15 %)."}

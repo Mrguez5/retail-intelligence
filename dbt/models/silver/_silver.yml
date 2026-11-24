@@ -1,146 +1,427 @@
 version: 2
 
 models:
+  # ------------------------------------------------------------------ reference data
   - name: silver_products
-    description: Inkwell's catalogue from the ERP export.
+    description: Inkwell's catalogue from the ERP export, typed, with a normalised title for matching.
+    config:
+      meta: {primary_key: [sku], grain: "one row per product"}
     columns:
       - name: sku
+        description: '{{ doc("col_sku") }}'
         data_tests: [unique, not_null]
+      - name: title
+        description: '{{ doc("col_title") }}'
       - name: title_key
+        description: '{{ doc("col_title_key") }}'
         data_tests: [unique, not_null]
+      - name: category
+        description: '{{ doc("col_category") }}'
       - name: supplier_code
+        description: '{{ doc("col_supplier_code") }}'
         data_tests:
           - relationships: {arguments: {to: ref('suppliers'), field: supplier_code}}
       - name: list_price_eur
+        description: '{{ doc("col_list_price_eur_current") }}'
         data_tests: [not_null]
+      - name: erp_competitor_url
+        description: Competitor page linked in the ERP. Empty when the ERP has no link (see silver_product_competitor_link).
+      - name: is_active
+        description: True if the product is on sale.
 
   - name: silver_list_price_history
     description: Inkwell list prices from the ERP change log, one row per price period (type-2 history).
+    config:
+      meta: {primary_key: [sku, valid_from], grain: "one row per product and price period"}
+    data_tests:
+      - unique_combination: {arguments: {columns: [sku, valid_from]}}
     columns:
       - name: sku
+        description: '{{ doc("col_sku") }}'
         data_tests:
           - not_null
           - relationships: {arguments: {to: ref('silver_products'), field: sku}}
       - name: list_price_eur
+        description: List price in EUR during the period.
         data_tests: [not_null]
       - name: valid_from
+        description: '{{ doc("col_valid_from") }}'
         data_tests: [not_null]
-
-  - name: int_sales_checked
-    description: Every sales line with its reference price (ERP history, weekly median or current list price) and verdict.
-    columns:
-      - name: sale_line_id
-        data_tests: [unique, not_null]
-      - name: reference_price_source
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: [erp_history, weekly_median, current_list_price]
+      - name: valid_to
+        description: '{{ doc("col_valid_to") }}'
+      - name: is_current
+        description: '{{ doc("col_is_current") }}'
 
   - name: silver_contract_prices
     description: Supplier contract prices, one row per validity period (type-2 history).
+    config:
+      meta: {primary_key: [supplier_code, sku, valid_from], grain: "one row per supplier, product and contract period"}
+    data_tests:
+      - unique_combination: {arguments: {columns: [supplier_code, sku, valid_from]}}
     columns:
+      - name: supplier_code
+        description: '{{ doc("col_supplier_code") }}'
       - name: sku
+        description: '{{ doc("col_sku") }}'
         data_tests:
           - not_null
           - relationships: {arguments: {to: ref('silver_products'), field: sku}}
       - name: unit_cost_eur
+        description: Agreed purchase price per unit in EUR during the period.
         data_tests: [not_null]
       - name: valid_from
+        description: '{{ doc("col_valid_from") }}'
         data_tests: [not_null]
+      - name: valid_to
+        description: '{{ doc("col_valid_to") }}'
+      - name: is_current
+        description: '{{ doc("col_is_current") }}'
 
   - name: silver_fx_daily
-    description: EUR/GBP for every calendar day; weekends carry the last business-day rate.
+    description: EUR/GBP for every calendar day; weekends and holidays carry the last business-day rate.
+    config:
+      meta: {primary_key: [rate_date], grain: "one row per calendar day"}
     columns:
       - name: rate_date
+        description: Calendar day.
         data_tests: [unique, not_null]
       - name: eur_gbp
+        description: Pounds per one euro on that day.
         data_tests: [not_null]
+      - name: is_carried_forward
+        description: True when the source had no rate that day and the previous business day's rate is used.
 
+  # ------------------------------------------------------------------ competitor
   - name: silver_competitor_runs
+    description: One row per scraper run, with a completeness check.
+    config:
+      meta: {primary_key: [source_file], grain: "one row per scraper run"}
     columns:
       - name: source_file
+        description: '{{ doc("col_source_file") }}'
         data_tests: [unique, not_null]
+      - name: scraped_at
+        description: When the run started.
+      - name: rows_scraped
+        description: Products read in the run.
+      - name: run_date
+        description: Date of the run.
+      - name: expected_rows
+        description: Median rows per run, used as the expected size.
+      - name: is_partial
+        description: True if the run read fewer than 95 % of the expected rows (it stopped half way).
 
   - name: silver_competitor_prices
-    description: Every competitor observation with a per-row data-quality verdict.
+    description: Every competitor observation, typed, with a data-quality verdict per row.
+    config:
+      meta: {primary_key: [url, scraped_at], grain: "one row per competitor product per scraper run"}
+    data_tests:
+      - unique_combination: {arguments: {columns: [url, scraped_at]}}
     columns:
+      - name: scraped_at
+        description: When the observation was taken (start of the run).
       - name: url
+        description: '{{ doc("col_competitor_url") }}'
         data_tests: [not_null]
+      - name: title
+        description: Title on the competitor's site.
+      - name: title_key
+        description: '{{ doc("col_title_key") }}'
+      - name: category
+        description: '{{ doc("col_category") }}'
+      - name: price_gbp
+        description: Price read on the page, in GBP.
+      - name: in_stock
+        description: True if the book was in stock.
+      - name: source_file
+        description: '{{ doc("col_source_file") }}'
+      - name: source_row
+        description: Row number in the source file.
+      - name: median_price_gbp
+        description: Median price of this book over all runs, used to spot absurd values.
       - name: dq_issue
+        description: '{{ doc("col_dq_issue") }} Values: invalid_timestamp, price_not_numeric, price_zero_or_negative, price_outlier (more than 5× its median).'
         data_tests:
           - accepted_values:
               arguments:
                 values: [invalid_timestamp, price_not_numeric, price_zero_or_negative, price_outlier]
 
   - name: silver_competitor_price_history
-    description: Type-2 history of competitor prices (gaps-and-islands).
+    description: Type-2 history of competitor prices built with gaps-and-islands. Only valid observations.
+    config:
+      meta: {primary_key: [url, valid_from], grain: "one row per competitor product and period with an unchanged price"}
+    data_tests:
+      - unique_combination: {arguments: {columns: [url, valid_from]}}
     columns:
+      - name: url
+        description: '{{ doc("col_competitor_url") }}'
+      - name: period_no
+        description: Sequence number of the price period for this book (1 = first).
       - name: price_gbp
+        description: Price in GBP during the period.
         data_tests: [not_null]
+      - name: valid_from
+        description: First observation with this price.
+      - name: valid_to
+        description: First observation with the next price (exclusive). Empty = current price.
+      - name: observations
+        description: Scraper runs that saw this price in the period.
+      - name: is_current
+        description: '{{ doc("col_is_current") }}'
+
+  - name: silver_competitor_catalog
+    description: Latest known version of each competitor product, used to link Inkwell products by title.
+    config:
+      meta: {primary_key: [url], grain: "one row per competitor product"}
+    columns:
+      - name: url
+        description: '{{ doc("col_competitor_url") }}'
+        data_tests: [unique, not_null]
+      - name: title
+        description: Title on the competitor's site.
+      - name: title_key
+        description: '{{ doc("col_title_key") }}'
+      - name: category
+        description: '{{ doc("col_category") }}'
+      - name: titles_with_same_key
+        description: Competitor products sharing this title key. More than 1 = ambiguous, not used for linking.
 
   - name: silver_product_competitor_link
+    description: Which competitor page sells the same book as each Inkwell product.
+    config:
+      meta: {primary_key: [sku], grain: "one row per product"}
     columns:
       - name: sku
+        description: '{{ doc("col_sku") }}'
         data_tests: [unique, not_null]
+      - name: competitor_url
+        description: '{{ doc("col_competitor_url") }} Empty if no reliable link was found.'
       - name: link_method
+        description: "erp_link (link in the ERP), title_match (unique exact title on the competitor), ambiguous_title or not_found."
         data_tests:
           - accepted_values:
               arguments:
                 values: [erp_link, title_match, ambiguous_title, not_found]
 
-  - name: silver_sales
-    description: Clean, de-duplicated sales lines from the three channels.
+  # ------------------------------------------------------------------ sales
+  - name: stg_sales_web
+    description: Web shop lines typed and put in the common sales shape.
+    config:
+      meta: {primary_key: [sale_line_id], grain: "one row per web order line"}
+    columns: &sales_staging_columns
+      - name: sale_line_id
+        description: '{{ doc("col_sale_line_id") }}'
+        data_tests: [unique, not_null]
+      - {name: channel, description: '{{ doc("col_channel") }}'}
+      - {name: order_id, description: '{{ doc("col_order_id") }}'}
+      - {name: sold_at, description: '{{ doc("col_sold_at") }}'}
+      - {name: sku_raw, description: '{{ doc("col_sku_raw") }}'}
+      - {name: title_raw, description: '{{ doc("col_title_raw") }}'}
+      - {name: quantity, description: '{{ doc("col_quantity") }}'}
+      - {name: unit_price_eur, description: '{{ doc("col_unit_price_eur") }}'}
+      - {name: discount_pct, description: '{{ doc("col_discount_pct") }}'}
+      - {name: commission_eur, description: '{{ doc("col_commission_eur") }}'}
+      - {name: country, description: '{{ doc("col_country") }}'}
+      - {name: dedup_key, description: '{{ doc("col_dedup_key") }}'}
+      - {name: source_file, description: '{{ doc("col_source_file") }}'}
+
+  - name: stg_sales_marketplace
+    description: Marketplace lines typed (decimal comma, dd/mm/yyyy) and put in the common sales shape. Still contains the repeated lines.
+    config:
+      meta: {primary_key: [sale_line_id], grain: "one row per marketplace line per export file"}
+    columns: *sales_staging_columns
+
+  - name: stg_sales_store
+    description: Shop lines typed (Excel or text dates) and put in the common sales shape. Titles still with typos.
+    config:
+      meta: {primary_key: [sale_line_id], grain: "one row per line typed in the shop"}
+    columns: *sales_staging_columns
+
+  - name: int_sales_matched
+    description: All channels in one table, each line linked to a product (SKU, exact title or fuzzy title) and ranked for de-duplication.
+    config:
+      meta: {primary_key: [sale_line_id], grain: "one row per sales line in any source file"}
     columns:
       - name: sale_line_id
+        description: '{{ doc("col_sale_line_id") }}'
         data_tests: [unique, not_null]
+      - {name: channel, description: '{{ doc("col_channel") }}'}
+      - {name: order_id, description: '{{ doc("col_order_id") }}'}
+      - {name: sold_at, description: '{{ doc("col_sold_at") }}'}
+      - {name: sku_raw, description: '{{ doc("col_sku_raw") }}'}
+      - {name: title_raw, description: '{{ doc("col_title_raw") }}'}
+      - {name: quantity, description: '{{ doc("col_quantity") }}'}
+      - {name: unit_price_eur, description: '{{ doc("col_unit_price_eur") }}'}
+      - {name: discount_pct, description: '{{ doc("col_discount_pct") }}'}
+      - {name: commission_eur, description: '{{ doc("col_commission_eur") }}'}
+      - {name: country, description: '{{ doc("col_country") }}'}
+      - {name: dedup_key, description: '{{ doc("col_dedup_key") }}'}
+      - {name: source_file, description: '{{ doc("col_source_file") }}'}
+      - {name: sale_date, description: '{{ doc("col_sale_date") }}'}
+      - {name: sku, description: 'Product the line was linked to. {{ doc("col_sku") }} Empty if no product was found.'}
+      - {name: match_method, description: '{{ doc("col_match_method") }}'}
+      - {name: match_score, description: '{{ doc("col_match_score") }}'}
+      - {name: match_edits, description: '{{ doc("col_match_edits") }}'}
+      - {name: dedup_rank, description: '{{ doc("col_dedup_rank") }}'}
+
+  - name: int_sales_checked
+    description: Every sales line with its reference price (ERP history, weekly median or current list price) and its data-quality verdict.
+    config:
+      meta: {primary_key: [sale_line_id], grain: "one row per sales line in any source file"}
+    columns:
+      - name: sale_line_id
+        description: '{{ doc("col_sale_line_id") }}'
+        data_tests: [unique, not_null]
+      - {name: channel, description: '{{ doc("col_channel") }}'}
+      - {name: order_id, description: '{{ doc("col_order_id") }}'}
+      - {name: sold_at, description: '{{ doc("col_sold_at") }}'}
+      - {name: sku_raw, description: '{{ doc("col_sku_raw") }}'}
+      - {name: title_raw, description: '{{ doc("col_title_raw") }}'}
+      - {name: quantity, description: '{{ doc("col_quantity") }}'}
+      - {name: unit_price_eur, description: '{{ doc("col_unit_price_eur") }}'}
+      - {name: discount_pct, description: '{{ doc("col_discount_pct") }}'}
+      - {name: commission_eur, description: '{{ doc("col_commission_eur") }}'}
+      - {name: country, description: '{{ doc("col_country") }}'}
+      - {name: dedup_key, description: '{{ doc("col_dedup_key") }}'}
+      - {name: source_file, description: '{{ doc("col_source_file") }}'}
+      - {name: sale_date, description: '{{ doc("col_sale_date") }}'}
+      - {name: sku, description: 'Product the line was linked to. Empty if no product was found.'}
+      - {name: match_method, description: '{{ doc("col_match_method") }}'}
+      - {name: match_score, description: '{{ doc("col_match_score") }}'}
+      - {name: match_edits, description: '{{ doc("col_match_edits") }}'}
+      - {name: dedup_rank, description: '{{ doc("col_dedup_rank") }}'}
+      - {name: list_price_eur, description: '{{ doc("col_list_price_eur_current") }}'}
+      - {name: reference_price_eur, description: '{{ doc("col_reference_price_eur") }}'}
+      - name: reference_price_source
+        description: '{{ doc("col_reference_price_source") }}'
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [erp_history, weekly_median, current_list_price]
+      - name: dq_issue
+        description: '{{ doc("col_dq_issue") }} Values, in the order they are checked: duplicate_line, invalid_date, unknown_product, missing_quantity, zero_quantity, invalid_price, price_outlier (more than 3× or less than 0.3× the reference price).'
+
+  - name: silver_sales
+    description: Clean, de-duplicated sales lines from the three channels (lines with no data-quality issue).
+    config:
+      meta: {primary_key: [sale_line_id], grain: "one row per valid sales line"}
+    columns:
+      - name: sale_line_id
+        description: '{{ doc("col_sale_line_id") }}'
+        data_tests: [unique, not_null]
+      - name: channel
+        description: '{{ doc("col_channel") }}'
+        data_tests:
+          - relationships: {arguments: {to: ref('channels'), field: channel}}
+      - {name: order_id, description: '{{ doc("col_order_id") }}'}
+      - name: sold_at
+        description: '{{ doc("col_sold_at") }}'
+        data_tests: [not_null]
+      - {name: sale_date, description: '{{ doc("col_sale_date") }}'}
       - name: sku
+        description: '{{ doc("col_sku") }}'
         data_tests:
           - not_null
           - relationships: {arguments: {to: ref('silver_products'), field: sku}}
-      - name: channel
-        data_tests:
-          - relationships: {arguments: {to: ref('channels'), field: channel}}
-      - name: sold_at
-        data_tests: [not_null]
-      - name: quantity
-        data_tests: [not_null]
       - name: match_method
+        description: '{{ doc("col_match_method") }}'
         data_tests:
           - accepted_values:
               arguments:
                 values: [sku, title_exact, title_fuzzy]
+      - {name: match_score, description: '{{ doc("col_match_score") }}'}
+      - {name: match_edits, description: '{{ doc("col_match_edits") }}'}
+      - name: quantity
+        description: '{{ doc("col_quantity") }}'
+        data_tests: [not_null]
+      - {name: unit_price_eur, description: '{{ doc("col_unit_price_eur") }}'}
+      - {name: discount_pct, description: '{{ doc("col_discount_pct") }}'}
+      - {name: commission_eur, description: '{{ doc("col_commission_eur") }}'}
+      - {name: country, description: '{{ doc("col_country") }}'}
+      - {name: source_file, description: '{{ doc("col_source_file") }}'}
 
   - name: silver_sales_quarantine
-    description: Sales lines kept out of the analysis, with the reason.
+    description: Sales lines kept out of the analysis, with the reason, so they can be fixed at the source. Nothing is deleted.
+    config:
+      meta: {primary_key: [sale_line_id], grain: "one row per rejected sales line"}
     columns:
       - name: sale_line_id
+        description: '{{ doc("col_sale_line_id") }}'
         data_tests: [unique, not_null]
+      - {name: channel, description: '{{ doc("col_channel") }}'}
+      - {name: order_id, description: '{{ doc("col_order_id") }}'}
+      - {name: sold_at, description: '{{ doc("col_sold_at") }}'}
+      - {name: sku_raw, description: '{{ doc("col_sku_raw") }}'}
+      - {name: title_raw, description: '{{ doc("col_title_raw") }}'}
+      - {name: matched_sku, description: "Product the line was linked to, if any (a line can be identified and still fail another rule)."}
+      - {name: quantity, description: '{{ doc("col_quantity") }}'}
+      - {name: unit_price_eur, description: '{{ doc("col_unit_price_eur") }}'}
+      - {name: list_price_eur, description: '{{ doc("col_list_price_eur_current") }}'}
+      - {name: reference_price_eur, description: '{{ doc("col_reference_price_eur") }}'}
+      - {name: reference_price_source, description: '{{ doc("col_reference_price_source") }}'}
       - name: dq_issue
+        description: Reason the line was rejected (first rule it failed).
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [duplicate_line, invalid_date, unknown_product, missing_quantity,
                          zero_quantity, invalid_price, price_outlier]
+      - {name: source_file, description: '{{ doc("col_source_file") }}'}
 
+  # ------------------------------------------------------------------ supplier invoices
   - name: silver_invoice_headers
+    description: Supplier invoices with typed amounts, recomputed totals and duplicate detection.
+    config:
+      meta: {primary_key: [source_file], grain: "one row per invoice PDF received"}
     columns:
-      - name: source_file
-        data_tests: [unique, not_null]
       - name: supplier_code
+        description: '{{ doc("col_supplier_code") }}'
         data_tests: [not_null]
+      - {name: invoice_number, description: '{{ doc("col_invoice_number") }}'}
       - name: invoice_date
+        description: Invoice date.
         data_tests: [not_null]
+      - {name: subtotal_printed, description: "Subtotal printed on the invoice, in EUR."}
+      - {name: vat_printed, description: "VAT printed on the invoice, in EUR."}
       - name: total_printed
+        description: Total printed on the invoice, in EUR.
         data_tests: [not_null]
+      - {name: vat_rate, description: "VAT rate of the supplier (0 for Northwind, reverse charge; 0.04 for Paperleaf)."}
+      - {name: line_count, description: "Invoice lines read from the PDF."}
+      - name: source_file
+        description: '{{ doc("col_source_file") }}'
+        data_tests: [unique, not_null]
+      - {name: ingested_at, description: "When the PDF was loaded into bronze."}
+      - {name: lines_total, description: "Sum of the printed line amounts."}
+      - {name: vat_expected, description: "VAT recomputed from the lines and the supplier's rate."}
+      - {name: total_expected, description: "Total recomputed (lines + VAT)."}
+      - {name: is_duplicate, description: "True for the second and later copies of the same supplier and invoice number."}
 
   - name: silver_invoice_lines
+    description: Invoice lines, typed, with the contract price that applied on the invoice date.
+    config:
+      meta: {primary_key: [source_file, line_no], grain: "one row per invoice line"}
+    data_tests:
+      - unique_combination: {arguments: {columns: [source_file, line_no]}}
     columns:
+      - {name: source_file, description: '{{ doc("col_source_file") }}'}
+      - {name: invoice_number, description: '{{ doc("col_invoice_number") }}'}
+      - {name: line_no, description: "Position of the line in the invoice."}
       - name: sku
+        description: '{{ doc("col_sku") }}'
         data_tests:
           - relationships: {arguments: {to: ref('silver_products'), field: sku}}
+      - {name: description, description: "Title printed on the line."}
+      - {name: quantity, description: "Units invoiced."}
       - name: unit_price_billed
+        description: Price per unit charged by the supplier, in EUR.
         data_tests: [not_null]
+      - {name: line_amount_printed, description: "Line amount printed on the invoice, in EUR."}
+      - {name: invoice_date, description: "Invoice date."}
+      - {name: supplier_code, description: '{{ doc("col_supplier_code") }}'}
       - name: unit_price_contract
+        description: Contract price valid on the invoice date, in EUR.
         data_tests: [not_null]
+      - {name: unit_price_diff, description: "Billed minus contract price per unit. Positive = charged above the contract."}
+      - {name: line_arithmetic_diff, description: "Quantity × billed price minus the printed line amount. 0 when the line adds up."}

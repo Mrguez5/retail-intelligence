@@ -8,6 +8,7 @@
     python run.py report       # print the main gold tables (or: report invoices | kpis | prices | quality)
     python run.py report --sql "select ..."   # any query against the warehouse
     python run.py ui           # browse every table in DuckDB's web UI (http://localhost:4213)
+    python run.py docs         # regenerate docs/data_dictionary.md (tables, columns, types, keys)
 """
 from __future__ import annotations
 
@@ -96,7 +97,7 @@ def cmd_scrape() -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report", "ui"])
+    ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report", "ui", "docs"])
     ap.add_argument("report", nargs="?", choices=list(REPORTS), help="report: show only this one")
     ap.add_argument("--sql", help="report: run your own query against the warehouse")
     args = ap.parse_args()
@@ -105,6 +106,10 @@ def main() -> None:
         return
     if args.command == "ui":
         cmd_ui()
+        return
+    if args.command == "docs":
+        from pipeline import data_dictionary
+        data_dictionary.generate()
         return
     if args.command in ("generate", "all"):
         cmd_generate()

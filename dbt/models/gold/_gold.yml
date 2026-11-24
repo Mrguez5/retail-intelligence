@@ -1,70 +1,180 @@
 version: 2
 
 models:
+  # ------------------------------------------------------------------ dimensions
   - name: dim_date
+    description: Calendar from 1 January to 29 November 2026.
+    config:
+      meta: {primary_key: [date_day], grain: "one row per calendar day"}
     columns:
       - name: date_day
+        description: Calendar day.
         data_tests: [unique, not_null]
+      - {name: week_start, description: '{{ doc("col_week_start") }}'}
+      - {name: month_start, description: "First day of the month."}
+      - {name: year, description: "Year."}
+      - {name: month, description: "Month number (1–12)."}
+      - {name: year_month, description: "Month as text (yyyy-mm)."}
+      - {name: iso_weekday, description: "Day of the week (1 = Monday … 7 = Sunday)."}
+      - {name: weekday_name, description: "Short day name (Mon … Sun)."}
+      - {name: is_weekend, description: "True on Saturdays and Sundays."}
 
   - name: dim_product
-    description: Products with supplier and the competitor page that sells the same book.
+    description: Products with their supplier and the competitor page that sells the same book.
+    config:
+      meta: {primary_key: [sku], grain: "one row per product"}
     columns:
       - name: sku
+        description: '{{ doc("col_sku") }}'
         data_tests: [unique, not_null]
+      - {name: title, description: '{{ doc("col_title") }}'}
+      - {name: category, description: '{{ doc("col_category") }}'}
+      - {name: supplier_code, description: '{{ doc("col_supplier_code") }}'}
+      - {name: supplier_name, description: "Supplier name."}
+      - {name: list_price_eur, description: '{{ doc("col_list_price_eur_current") }}'}
+      - {name: competitor_url, description: '{{ doc("col_competitor_url") }} Empty if no reliable link exists.'}
+      - {name: link_method, description: "How the competitor page was found: erp_link or title_match."}
+      - {name: has_competitor_link, description: "True if the product can be compared with the competitor."}
 
   - name: dim_supplier
+    description: Suppliers (from the suppliers seed).
+    config:
+      meta: {primary_key: [supplier_code], grain: "one row per supplier"}
     columns:
       - name: supplier_code
+        description: '{{ doc("col_supplier_code") }}'
         data_tests: [unique, not_null]
+      - {name: supplier_name, description: "Legal name."}
+      - {name: country, description: "Country (ISO code)."}
+      - {name: invoice_layout, description: "Invoice PDF format the parser expects from this supplier."}
+      - {name: vat_rate, description: "VAT rate applied on its invoices."}
+      - {name: payment_terms_days, description: "Days to pay its invoices."}
 
   - name: dim_channel
+    description: Sales channels (from the channels seed).
+    config:
+      meta: {primary_key: [channel], grain: "one row per channel"}
     columns:
       - name: channel
+        description: '{{ doc("col_channel") }}'
         data_tests: [unique, not_null]
+      - {name: channel_name, description: "Display name."}
+      - {name: source_format, description: "How the channel delivers its sales data."}
+      - {name: commission_rate, description: "Commission the channel keeps (0.15 = 15 %)."}
 
+  # ------------------------------------------------------------------ facts
   - name: fct_sales
-    description: One row per sales line with revenue, standard cost and margin.
+    description: One row per valid sales line with revenue, standard cost (contract price on the sale date) and margin. Returns have negative quantity and amounts.
+    config:
+      meta: {primary_key: [sale_line_id], grain: "one row per valid sales line"}
     columns:
       - name: sale_line_id
+        description: '{{ doc("col_sale_line_id") }}'
         data_tests: [unique, not_null]
       - name: sale_date
+        description: '{{ doc("col_sale_date") }}'
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_date'), field: date_day}}
+      - {name: sold_at, description: '{{ doc("col_sold_at") }}'}
+      - name: channel
+        description: '{{ doc("col_channel") }}'
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_channel'), field: channel}}
+      - {name: order_id, description: '{{ doc("col_order_id") }}'}
+      - name: sku
+        description: '{{ doc("col_sku") }}'
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_product'), field: sku}}
+      - {name: quantity, description: '{{ doc("col_quantity") }}'}
+      - {name: unit_price_eur, description: '{{ doc("col_unit_price_eur") }}'}
+      - {name: discount_pct, description: '{{ doc("col_discount_pct") }}'}
+      - {name: gross_revenue_eur, description: "Quantity × unit price, before discount."}
+      - {name: net_revenue_eur, description: "Gross revenue minus the web discount."}
+      - {name: commission_eur, description: '{{ doc("col_commission_eur") }}'}
+      - name: unit_cost_eur
+        description: Supplier contract price per unit valid on the sale date (standard cost).
+        data_tests: [not_null]
+      - {name: cogs_eur, description: "Cost of goods sold = quantity × unit cost."}
+      - {name: margin_eur, description: "Net revenue − commission − cost of goods sold."}
+      - {name: is_return, description: "True for return lines (negative quantity)."}
+      - {name: match_method, description: '{{ doc("col_match_method") }}'}
+
+  - name: fct_competitor_price_daily
+    description: Competitor price for every linked product and day, from the latest valid observation at the end of that day (ASOF join), in GBP and EUR.
+    config:
+      meta: {primary_key: [date_day, sku], grain: "one row per product with a competitor link and day"}
+    data_tests:
+      - unique_combination: {arguments: {columns: [date_day, sku]}}
+    columns:
+      - name: date_day
+        description: Calendar day.
         data_tests:
           - relationships: {arguments: {to: ref('dim_date'), field: date_day}}
       - name: sku
+        description: '{{ doc("col_sku") }}'
         data_tests:
           - relationships: {arguments: {to: ref('dim_product'), field: sku}}
-      - name: channel
-        data_tests:
-          - relationships: {arguments: {to: ref('dim_channel'), field: channel}}
-      - name: unit_cost_eur
-        data_tests: [not_null]
+      - {name: price_gbp, description: "Competitor price in GBP. Empty before the first valid observation."}
+      - {name: eur_gbp, description: "EUR/GBP rate of the day."}
+      - {name: price_eur, description: "Competitor price converted to EUR with the rate of the day."}
+      - {name: in_stock, description: "True if the competitor had the book in stock at the last observation."}
+      - {name: observed_at, description: "When the observation used was taken."}
+      - {name: days_since_observed, description: "Age of the observation in days (0 = scraped that day)."}
 
-  - name: fct_competitor_price_daily
-    description: Competitor price per product and day (ASOF join to the latest observation), in GBP and EUR.
-    data_tests:
-      - unique_combination:
-          arguments:
-            columns: [date_day, sku]
-
+  # ------------------------------------------------------------------ marts
   - name: mart_price_position_weekly
-    description: Inkwell's average price vs the competitor's, per product and week.
+    description: Inkwell's average price vs the competitor's, per product and week, with a price band.
+    config:
+      meta: {primary_key: [week_start, sku], grain: "one row per product with a competitor link and week"}
     data_tests:
-      - unique_combination:
-          arguments:
-            columns: [week_start, sku]
+      - unique_combination: {arguments: {columns: [week_start, sku]}}
     columns:
+      - {name: week_start, description: '{{ doc("col_week_start") }}'}
+      - name: sku
+        description: '{{ doc("col_sku") }}'
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_product'), field: sku}}
+      - {name: title, description: '{{ doc("col_title") }}'}
+      - {name: category, description: '{{ doc("col_category") }}'}
+      - {name: units, description: "Units sold that week (returns excluded)."}
+      - {name: net_revenue_eur, description: "Net revenue that week (returns included)."}
+      - {name: our_avg_price_eur, description: "Inkwell's average unit price that week, weighted by units. Empty with no sales."}
+      - {name: competitor_avg_price_eur, description: "Competitor's average daily price that week, in EUR."}
+      - {name: competitor_in_stock_share, description: "Share of days the competitor had the book in stock (0–1)."}
+      - {name: price_gap_pct, description: "Our price ÷ competitor price − 1 (0.05 = 5 % more expensive)."}
       - name: price_band
+        description: "cheaper (gap < −3 %), aligned (±3 %), pricier (3–10 %), much pricier (> 10 %) or no sales."
         data_tests:
           - accepted_values:
               arguments:
                 values: [no sales, cheaper, aligned, pricier, much pricier]
 
   - name: mart_invoice_audit
-    description: Supplier invoices checked for arithmetic, duplicates and prices above contract.
+    description: Every supplier invoice received, checked for arithmetic, duplicates and prices above contract, with the money at stake.
+    config:
+      meta: {primary_key: [source_file], grain: "one row per invoice PDF received"}
     columns:
+      - {name: supplier_code, description: '{{ doc("col_supplier_code") }}'}
+      - {name: invoice_number, description: '{{ doc("col_invoice_number") }}'}
+      - {name: invoice_date, description: "Invoice date."}
       - name: source_file
+        description: '{{ doc("col_source_file") }}'
         data_tests: [unique, not_null]
+      - {name: subtotal_printed, description: "Subtotal printed, in EUR."}
+      - {name: vat_printed, description: "VAT printed, in EUR."}
+      - {name: total_printed, description: "Total printed, in EUR."}
+      - {name: total_expected, description: "Total recomputed from the lines and the VAT rate."}
+      - {name: total_diff_eur, description: "Printed total − recomputed total. Positive = asks for more than it should."}
+      - {name: arithmetic_ok, description: "True if subtotal and total add up (1-cent tolerance)."}
+      - {name: is_duplicate, description: "True if this PDF repeats an invoice already received."}
+      - {name: lines, description: "Invoice lines."}
+      - {name: overbilled_lines, description: "Lines charged above the contract price valid on the invoice date."}
+      - {name: overbilled_eur_incl_vat, description: "Amount charged above the contract, VAT included."}
+      - {name: lines_without_contract, description: "Lines with no contract price for that date."}
+      - {name: line_arithmetic_errors, description: "Lines where quantity × price differs from the printed amount."}
+      - {name: amount_at_risk_eur, description: "Money that should not be paid as printed: the whole total if duplicate, else overcharge + overbilling."}
       - name: audit_status
+        description: "What to do: OK, BLOCK - duplicate, REVIEW - total does not add up, CLAIM - billed above contract, REVIEW - no contract price."
         data_tests:
           - accepted_values:
               arguments:
@@ -72,9 +182,34 @@ models:
                          CLAIM - billed above contract, REVIEW - no contract price]
 
   - name: mart_kpis_monthly
+    description: Monthly business summary — sales, margin, price position and supplier invoices.
+    config:
+      meta: {primary_key: [month_start], grain: "one row per month"}
     columns:
       - name: month_start
+        description: First day of the month.
         data_tests: [unique, not_null]
+      - {name: year_month, description: "Month as text (yyyy-mm)."}
+      - {name: net_revenue_eur, description: "Net revenue of the month (returns deducted)."}
+      - {name: margin_eur, description: "Margin of the month."}
+      - {name: margin_pct, description: "Margin ÷ net revenue."}
+      - {name: units_sold, description: "Units sold (returns excluded)."}
+      - {name: units_returned, description: "Units returned."}
+      - {name: orders, description: "Distinct orders (each shop line counts as one)."}
+      - {name: weighted_price_gap_pct, description: "Price gap vs the competitor, weighted by units sold."}
+      - {name: purchases_eur, description: "Supplier invoices of the month, duplicates excluded."}
+      - {name: invoice_amount_at_risk_eur, description: "Money at risk in that month's invoices (see mart_invoice_audit)."}
 
   - name: mart_data_quality
-    description: Every data-quality check with rows checked, rows failed and the action taken.
+    description: Every data-quality check — what was checked, how many rows failed and what the pipeline did about it.
+    config:
+      meta: {primary_key: [source, rule], grain: "one row per source and check"}
+    data_tests:
+      - unique_combination: {arguments: {columns: [source, rule]}}
+    columns:
+      - {name: source, description: "Source checked (sales_web, competitor_snapshots, supplier_invoices …)."}
+      - {name: rule, description: "Name of the check or fix."}
+      - {name: rows_checked, description: "Rows (or runs, invoices, days) looked at."}
+      - {name: rows_failed, description: "Rows that failed the check or needed the fix."}
+      - {name: failed_share, description: "rows_failed ÷ rows_checked."}
+      - {name: action, description: "What the pipeline did with them."}

@@ -1,7 +1,7 @@
 # Retail Price & Procurement Intelligence
 
 An end-to-end data platform for a (fictional) online bookseller: four messy real-world
-sources go into a **bronze → silver → gold lakehouse** in DuckDB + dbt, with **109 automated
+sources go into a **bronze → silver → gold lakehouse** in DuckDB + dbt, with **143 automated
 data tests**. The output answers three business questions:
 
 1. **Are we more expensive than the competitor, and what does it cost us?**
@@ -9,6 +9,8 @@ data tests**. The output answers three business questions:
 3. **Can we trust the numbers?** Every defect is counted, explained and traced to its source file.
 
 Runs from scratch in about 20 seconds on a laptop, for free. No cloud account needed.
+
+📖 **[Data dictionary](docs/data_dictionary.md)**: every table and column, with type, primary and foreign keys, grain, lineage and checks.
 
 > All companies, people and figures are fictional. The competitor catalogue is
 > [books.toscrape.com](https://books.toscrape.com), a public sandbox built for scraping practice.
@@ -99,8 +101,9 @@ sale is flagged.
 - **Point-in-time validation**: each sale checked against the price valid that day, with a two-level fallback
 - **ASOF join** for the latest competitor price at the end of each day, with a "days since observed" column
 - **Fuzzy matching** of hand-typed titles, with the score and edit distance kept for audit
-- **Data-quality framework**: a verdict per row, quarantine tables, a `mart_data_quality` summary and 109 dbt tests (generic, custom generic and singular)
+- **Data-quality framework**: a verdict per row, quarantine tables, a `mart_data_quality` summary and 143 dbt tests (generic, custom generic and singular, including a primary-key test on every table)
 - **Polite live scraper** (`python run.py scrape`): robots.txt, delays, retries with back-off. It writes the same file shape as the simulated runs.
+- **Documentation as code**: table and column descriptions live in the dbt YAML (shared texts as dbt doc blocks); the data dictionary is generated from them plus the warehouse, so it cannot drift from the code
 - **CI**: GitHub Actions builds the whole platform from scratch and checks that a second ingest loads nothing
 
 ## Run it
@@ -120,6 +123,7 @@ python run.py all                 # generate sources → bronze → dbt build (m
 | `python run.py scrape` | Optional: a real snapshot of books.toscrape.com into `data/raw/competitor/` |
 | `python run.py report` | Prints the main results: `kpis`, `invoices`, `prices`, `quality` (or `--sql "select …"` for your own query) |
 | `python run.py ui` | Opens every table in DuckDB's web UI at http://localhost:4213 (press Enter in the terminal to close it) |
+| `python run.py docs` | Regenerates [docs/data_dictionary.md](docs/data_dictionary.md) from the dbt YAML descriptions and the warehouse (types, keys, row counts, tests) |
 
 The warehouse is a single file, `data/warehouse/retail.duckdb`. You can open it with the DuckDB
 CLI, DBeaver, Python or Power BI (ODBC).

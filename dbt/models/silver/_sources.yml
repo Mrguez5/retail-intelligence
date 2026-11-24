@@ -1,17 +1,202 @@
 version: 2
+
+# Bronze: raw files landed by pipeline/bronze.py. Every business column is VARCHAR, exactly as
+# delivered; the five columns starting with "_" are added by the loader for lineage.
+# Primary key of every bronze table: (_source_file, _row_number).
+
 sources:
   - name: bronze
     description: Raw files landed as text by pipeline/bronze.py (one table per source).
     schema: bronze
     tables:
       - name: erp_products
+        description: Inkwell's product catalogue, as exported from the ERP (CSV). One row per product.
+        meta: {primary_key: [_source_file, _row_number], grain: "one row per product in the ERP export"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, _row_number]}}
+        columns:
+          - {name: sku, description: "Product code, e.g. INK-00001."}
+          - {name: title, description: "Book title."}
+          - {name: category, description: "Book category."}
+          - {name: supplier_code, description: "Supplier that sells the title to Inkwell (NWD or PLW)."}
+          - {name: list_price_eur, description: "Today's list price in EUR, as text with a decimal point."}
+          - {name: competitor_url, description: "Link to the same book on the competitor's site. Empty for ~20 % of products."}
+          - {name: active, description: "Y if the product is on sale."}
+          - &row_number {name: _row_number, description: '{{ doc("col_bronze_row_number") }}'}
+          - &source_file {name: _source_file, description: '{{ doc("col_bronze_source_file") }}'}
+          - &file_hash {name: _file_hash, description: '{{ doc("col_bronze_file_hash") }}'}
+          - &batch_id {name: _batch_id, description: '{{ doc("col_bronze_batch_id") }}'}
+          - &ingested_at {name: _ingested_at, description: '{{ doc("col_bronze_ingested_at") }}'}
+
       - name: erp_price_changes
+        description: ERP log of list-price changes (CSV). One row each time a product's price changes. 20 titles migrated from the old ERP have no history.
+        meta: {primary_key: [_source_file, _row_number], grain: "one row per price change"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, _row_number]}}
+        columns:
+          - {name: sku, description: "Product code."}
+          - {name: list_price_eur, description: "New list price in EUR (text)."}
+          - {name: valid_from, description: "Date the new price starts to apply (yyyy-mm-dd)."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: contract_prices
+        description: Purchase prices agreed with each supplier (Excel, sheet "Contract prices"). A product can have several validity periods.
+        meta: {primary_key: [_source_file, _row_number], grain: "one row per product and contract period"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, _row_number]}}
+        columns:
+          - {name: supplier, description: "Supplier code (NWD or PLW)."}
+          - {name: sku, description: "Product code."}
+          - {name: title, description: "Book title (informative)."}
+          - {name: unit_cost_eur, description: "Agreed purchase price per unit in EUR."}
+          - {name: valid_from, description: "First day of the contract price (Excel date read as text)."}
+          - {name: valid_to, description: "Last day of the contract price; empty = open-ended."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: fx_rates
+        description: EUR/GBP reference rates (CSV). Business days only; weekends and holidays are missing.
+        meta: {primary_key: [_source_file, _row_number], grain: "one row per business day"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, _row_number]}}
+        columns:
+          - {name: date, description: "Rate date (yyyy-mm-dd)."}
+          - {name: eur_gbp, description: "Pounds per one euro."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: competitor_snapshots
+        description: Competitor catalogue scraped from books.toscrape.com, one CSV per scraper run (Mondays and Thursdays). Contains parser glitches (price 0.00 or ×100), 2 missing runs and 1 run cut half way.
+        meta: {primary_key: [_source_file, _row_number], grain: "one row per competitor product per scraper run"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, _row_number]}}
+        columns:
+          - {name: scraped_at, description: "When the run started (yyyy-mm-dd hh:mm:ss)."}
+          - {name: url, description: "Product page on the competitor's site."}
+          - {name: title, description: "Book title on the competitor's site."}
+          - {name: category, description: "Category on the competitor's site."}
+          - {name: price, description: "Price in GBP as read from the page."}
+          - {name: in_stock, description: "True if the page said \"In stock\"."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: sales_web
+        description: Web shop orders, one CSV per month (ISO dates, decimal point). Returns are lines with negative quantity and an order id ending in -R.
+        meta: {primary_key: [_source_file, _row_number], grain: "one row per order line"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, _row_number]}}
+        columns:
+          - {name: order_id, description: "Web order number (W100001…)."}
+          - {name: order_ts, description: "Order date and time (yyyy-mm-ddThh:mm:ss)."}
+          - {name: sku, description: "Product code."}
+          - {name: quantity, description: "Units; negative for returns."}
+          - {name: unit_price_eur, description: "Price per unit in EUR."}
+          - {name: discount_pct, description: "Discount code in percent (0, 5 or 10)."}
+          - {name: customer_country, description: "Customer country (ISO code)."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: sales_marketplace
+        description: Marketplace sales export in Spanish, one CSV per month (";" separator, decimal comma, dd/mm/yyyy). Each file repeats the last 3 days of the previous month, so lines arrive twice.
+        meta: {primary_key: [_source_file, _row_number], grain: "one row per order line per export file"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, _row_number]}}
+        columns:
+          - {name: no_pedido, description: "Marketplace order number (column \"Nº pedido\"). One order = one line."}
+          - {name: fecha, description: "Sale date and time (dd/mm/yyyy hh:mm)."}
+          - {name: ref_vendedor, description: "Seller reference = Inkwell SKU (column \"Ref. vendedor\"). Empty in ~10 % of lines."}
+          - {name: titulo, description: "Book title (column \"Título\")."}
+          - {name: unidades, description: "Units sold."}
+          - {name: precio_unitario, description: "Price per unit in EUR, decimal comma (\"16,99\")."}
+          - {name: comision, description: "Marketplace commission in EUR, decimal comma (column \"Comisión\")."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: sales_store
+        description: Madrid shop sales typed by hand into a monthly Excel. No SKU (title only, with typos), some dates typed as text, prices typed ×10, missing quantities and gift cards.
+        meta: {primary_key: [_source_file, _row_number], grain: "one row per line typed in the shop"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, _row_number]}}
+        columns:
+          - {name: fecha, description: "Sale date: an Excel date (read as yyyy-mm-dd hh:mm:ss) or text dd/mm/yyyy."}
+          - {name: libro, description: "Book title as typed by the shop assistant."}
+          - {name: cant, description: "Units sold; sometimes empty."}
+          - {name: pvp, description: "Retail price per unit in EUR."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: invoice_headers
+        description: Header and totals of each supplier invoice, extracted from the PDF by pipeline/pdf_invoices.py. Amounts kept exactly as printed.
+        meta: {primary_key: [_source_file], grain: "one row per invoice PDF"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file]}}
+        columns:
+          - {name: layout, description: "Invoice format recognised: northwind_en (English) or paperleaf_es (Spanish)."}
+          - {name: supplier_name, description: "Supplier name printed at the top of the invoice."}
+          - {name: invoice_number, description: "Invoice number as printed."}
+          - {name: invoice_date, description: "Invoice date as printed (\"02 Jan 2026\" or \"17/06/2026\")."}
+          - {name: subtotal, description: "Subtotal as printed (\"1,234.56 EUR\" or \"1.234,56 €\")."}
+          - {name: vat, description: "VAT amount as printed."}
+          - {name: total, description: "Total as printed."}
+          - {name: line_count, description: "Number of invoice lines recognised in the PDF."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: invoice_lines
+        description: Lines of each supplier invoice, extracted from the PDF. Values kept exactly as printed.
+        meta: {primary_key: [_source_file, line_no], grain: "one row per invoice line"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [_source_file, line_no]}}
+        columns:
+          - {name: invoice_number, description: "Invoice number the line belongs to."}
+          - {name: line_no, description: "Position of the line in the invoice (1 = first)."}
+          - {name: sku, description: "Product code printed on the line."}
+          - {name: description, description: "Book title printed on the line (may be cut at 48 characters)."}
+          - {name: qty, description: "Units invoiced."}
+          - {name: unit_price, description: "Price per unit as printed."}
+          - {name: amount, description: "Line amount as printed."}
+          - *row_number
+          - *source_file
+          - *file_hash
+          - *batch_id
+          - *ingested_at
+
       - name: _ingestion_log
+        description: One row per file per ingestion run, with the outcome. Used to skip files already loaded.
+        meta: {primary_key: [batch_id, source_file], grain: "one row per file per ingestion run"}
+        data_tests:
+          - unique_combination: {arguments: {columns: [batch_id, source_file]}}
+        columns:
+          - {name: batch_id, description: "Ingestion run id."}
+          - {name: source, description: "Bronze table the file belongs to."}
+          - {name: source_file, description: "File path relative to the repository root."}
+          - {name: file_hash, description: "SHA-256 of the file content."}
+          - {name: status, description: "LOADED or FAILED."}
+          - {name: rows_loaded, description: "Rows written to bronze (0 if it failed)."}
+          - {name: error, description: "Why the file could not be read (only when FAILED)."}
+          - {name: ingested_at, description: "When the file was processed."}
