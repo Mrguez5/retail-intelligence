@@ -10,10 +10,26 @@ data tests**. The output answers three business questions:
 
 Runs from scratch in about 20 seconds on a laptop, for free. No cloud account needed.
 
-📖 **[Data dictionary](docs/data_dictionary.md)**: every table and column, with type, primary and foreign keys, grain, lineage and checks (also as a [PDF](docs/data_dictionary.pdf)).
+📊 **Dashboard**: [`docs/index.html`](docs/index.html), one self-contained page (open it from disk; no server, no external library). · 📖 **[Data dictionary](docs/data_dictionary.md)**: every table and column, with type, primary and foreign keys, grain, lineage and checks (also as a [PDF](docs/data_dictionary.pdf)).
 
 > All companies, people and figures are fictional. The competitor catalogue is
 > [books.toscrape.com](https://books.toscrape.com), a public sandbox built for scraping practice.
+
+## Dashboard
+
+![Dashboard overview](docs/img/dashboard_overview.png)
+
+Four tabs, built by `python run.py dashboard` from the gold layer:
+
+| Tab | Answers |
+|---|---|
+| **Overview** | Revenue by month and channel, margin, books sold, money at risk in supplier invoices |
+| **Price vs competitor** | Weekly price gap with the two repricing rounds, units sold by price position, and the titles still much dearer than the competitor |
+| **Supplier invoices** | Money at risk per invoice, by status (block a duplicate, claim an overcharge, review a total) |
+| **Data quality** | Lines set aside by reason, the raw = clean + quarantined reconciliation, and every data-quality check |
+
+Charts are hand-built SVG with hover and keyboard tooltips, a table view for every chart, and light and dark themes
+(colour palette validated for colour-vision deficiency). More screenshots: [prices](docs/img/dashboard_prices.png) · [invoices](docs/img/dashboard_invoices.png) · [data quality](docs/img/dashboard_quality.png) · [dark theme](docs/img/dashboard_overview_dark.png).
 
 ---
 
@@ -57,7 +73,7 @@ flowchart LR
 | Net revenue | **€1.05 M** across 3 channels, 24,691 books sold |
 | Gross margin | **35.1 %** after marketplace commission and supplier cost |
 | Price position | Inkwell was **+3.2 % above the competitor in January**. After the April and August repricing it was **2.9 % below**. |
-| Price elasticity | Products priced *much higher* (>10 %) than the competitor sell **22 % fewer units a week** than products priced *lower* (2.82 vs 3.64). |
+| Price elasticity | Products priced *much higher* (>10 %) than the competitor sell **23 % fewer units a week** than products priced *lower* (2.82 vs 3.64). |
 | Supplier invoices | **€9,695 at risk** in 12 of 41 invoices: one invoice sent twice (€8,543), a price increase billed two weeks early, 10 lines above contract, and 2 totals that don't add up |
 
 ## Data quality: every defect found and counted
@@ -124,7 +140,8 @@ sale is flagged.
 - **Polite live scraper** (`python run.py scrape`): robots.txt, delays, retries with back-off. It writes the same file shape as the simulated runs.
 - **Documentation as code**: table and column descriptions live in the dbt YAML (shared texts as dbt doc blocks); the data dictionary is generated from them plus the warehouse, so it cannot drift from the code
 - **Robustness tests** (pytest): the landing zone is damaged on purpose in an isolated copy and the results are checked
-- **CI**: GitHub Actions builds the whole platform from scratch, checks that a second ingest loads nothing and runs the robustness tests
+- **Dashboard without dependencies**: SVG charts, hover/keyboard tooltips, table views, light/dark themes, palette checked for colour blindness
+- **CI**: GitHub Actions builds the whole platform (and the dashboard) from scratch, checks that a second ingest loads nothing and runs the robustness tests
 
 ## Run it
 
@@ -146,6 +163,8 @@ python run.py all                 # generate sources → bronze → dbt build (m
 | `python run.py ui` | Opens every table in DuckDB's web UI at http://localhost:4213 (press Enter in the terminal to close it) |
 | `python run.py docs` | Regenerates [docs/data_dictionary.md](docs/data_dictionary.md) from the dbt YAML descriptions and the warehouse (types, keys, row counts, tests) |
 | `python run.py docs --pdf` | Same, plus a styled HTML page and an A4 landscape PDF (printed with Edge or Chrome, no extra package) |
+| `python run.py dashboard` | Rebuilds the dashboard [docs/index.html](docs/index.html) from the gold layer (also done by `all`) |
+| `python run.py screenshots` | 1600×1200 screenshots of every tab, light and dark, into `docs/img/` (Edge or Chrome) |
 
 The warehouse is a single file, `data/warehouse/retail.duckdb`. You can open it with the DuckDB
 CLI, DBeaver, Python or Power BI (ODBC).
@@ -164,6 +183,6 @@ run.py               one entry point for every step
 
 ## Roadmap
 
-- [ ] Interactive dashboard published as a static site
+- [x] Interactive dashboard (static, self-contained) — publish with GitHub Pages from `/docs` once the repo is public
 - [ ] Orchestration with Dagster (asset graph, schedules)
 - [ ] Databricks Free Edition variant (PySpark + Delta) of the silver/gold layers

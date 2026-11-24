@@ -8,6 +8,7 @@
     python run.py report       # print the main gold tables (or: report invoices | kpis | prices | quality)
     python run.py report --sql "select ..."   # any query against the warehouse
     python run.py ui           # browse every table in DuckDB's web UI (http://localhost:4213)
+    python run.py dashboard    # build docs/index.html: the interactive dashboard (self-contained)
     python run.py docs         # regenerate docs/data_dictionary.md (tables, columns, types, keys)
     python run.py docs --pdf   # ... and also docs/data_dictionary.html + .pdf (A4 landscape)
 """
@@ -103,7 +104,7 @@ def cmd_scrape() -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report", "ui", "docs"])
+    ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report", "ui", "docs", "dashboard", "screenshots"])
     ap.add_argument("report", nargs="?", choices=list(REPORTS), help="report: show only this one")
     ap.add_argument("--sql", help="report: run your own query against the warehouse")
     ap.add_argument("--pdf", action="store_true", help="docs: also export a styled HTML page and a PDF")
@@ -113,6 +114,16 @@ def main() -> None:
         return
     if args.command == "ui":
         cmd_ui()
+        return
+    if args.command == "dashboard":
+        from pipeline import dashboard
+        print("dashboard written to", dashboard.build())
+        return
+    if args.command == "screenshots":
+        from pipeline import screenshots
+        for dark in (False, True):
+            for p in screenshots.capture(dark=dark):
+                print(p.relative_to(config.ROOT))
         return
     if args.command == "docs":
         from pipeline import data_dictionary
@@ -128,6 +139,9 @@ def main() -> None:
         cmd_ingest()
     if args.command in ("transform", "all"):
         cmd_transform()
+    if args.command == "all" and "RI_DATA_DIR" not in os.environ:   # the dashboard lives in docs/ of the repo
+        from pipeline import dashboard
+        log.info("dashboard written to %s", dashboard.build())
     if args.command == "scrape":
         cmd_scrape()
 

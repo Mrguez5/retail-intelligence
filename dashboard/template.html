@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inkwell Books · Retail Price &amp; Procurement Intelligence</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface-1: #fcfcfb; --card: #ffffff;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a;
+  --good-text: #006300; --bad-text: #b42318;
+  --status-good: #0ca30c; --status-warning: #fab219; --status-serious: #ec835a; --status-critical: #d03b3b;
+  --wash: rgba(42,120,214,0.10); --tab-active: #0b0b0b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19; --card: #1a1a19;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+    --good-text: #0ca30c; --bad-text: #e66767; --wash: rgba(57,135,229,0.14); --tab-active: #f0efec;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface-1: #1a1a19; --card: #1a1a19;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+  --good-text: #0ca30c; --bad-text: #e66767; --wash: rgba(57,135,229,0.14); --tab-active: #f0efec;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+.viz-root { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page);
+  color: var(--text-primary); min-height: 100vh; font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px 48px; }
+header.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.eyebrow { color: var(--text-secondary); font-size: 13px; margin: 0 0 2px; }
+h1 { font-size: 22px; margin: 0; font-weight: 650; }
+.sub { color: var(--text-secondary); margin: 4px 0 0; }
+.theme-btn { background: var(--card); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; }
+nav.tabs { display: flex; gap: 4px; margin: 22px 0 18px; border-bottom: 1px solid var(--grid); flex-wrap: wrap; }
+nav.tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary);
+  font: inherit; font-weight: 550; padding: 10px 12px; cursor: pointer; margin-bottom: -1px; }
+nav.tabs button[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--tab-active); }
+nav.tabs button:focus-visible, .theme-btn:focus-visible, .table-toggle:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+section[role="tabpanel"][hidden] { display: none; }
+.lead { color: var(--text-secondary); margin: 0 0 16px; max-width: 820px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile, .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.tile { padding: 14px 16px; }
+.tile .label { color: var(--text-secondary); font-size: 13px; }
+.tile .value { font-size: 26px; font-weight: 620; margin-top: 2px; }
+.tile .note { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.tile.hero { grid-column: span 2; }
+.tile.hero .value { font-size: 48px; line-height: 1.1; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.card { padding: 16px 16px 12px; min-width: 0; }
+.card h2 { font-size: 15px; margin: 0; font-weight: 620; }
+.card .desc { color: var(--text-secondary); font-size: 13px; margin: 2px 0 10px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-secondary); margin: 0 0 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { font-family: inherit; }
+.axis-label { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.data-label { fill: var(--text-secondary); font-size: 11.5px; font-weight: 600; }
+.note-label { fill: var(--text-secondary); font-size: 11px; }
+.table-toggle { background: none; border: none; color: var(--text-secondary); font: inherit; font-size: 12.5px;
+  padding: 4px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.data th { text-align: left; color: var(--text-secondary); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--axis); }
+table.data td { padding: 6px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-wrap { overflow-x: auto; }
+.status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.status .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.up-bad { color: var(--bad-text); } .down-good { color: var(--good-text); }
+.tooltip { position: fixed; pointer-events: none; z-index: 10; background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,0.12); min-width: 140px; }
+.tooltip .tt-title { color: var(--text-secondary); margin-bottom: 4px; }
+.tooltip .row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tooltip .key { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.tooltip .key b { width: 12px; height: 2px; display: inline-block; border-radius: 1px; }
+.tooltip strong { font-variant-numeric: tabular-nums; }
+.check { display: inline-flex; align-items: center; gap: 6px; color: var(--good-text); font-weight: 600; }
+footer { color: var(--text-muted); font-size: 12.5px; margin-top: 28px; border-top: 1px solid var(--grid); padding-top: 12px; }
+@media (max-width: 520px) { .tile.hero { grid-column: span 1; } .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="viz-root" id="root">
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Inkwell Books (fictional) · Jan–Oct 2026</p>
+      <h1>Retail Price &amp; Procurement Intelligence</h1>
+      <p class="sub">Sales from three channels, competitor prices and supplier invoices, cleaned and checked by a bronze → silver → gold pipeline.</p>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch light or dark theme">Theme: auto</button>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Dashboard sections">
+    <button role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true">Overview</button>
+    <button role="tab" id="tab-prices" aria-controls="panel-prices" aria-selected="false" tabindex="-1">Price vs competitor</button>
+    <button role="tab" id="tab-invoices" aria-controls="panel-invoices" aria-selected="false" tabindex="-1">Supplier invoices</button>
+    <button role="tab" id="tab-quality" aria-controls="panel-quality" aria-selected="false" tabindex="-1">Data quality</button>
+  </nav>
+
+  <section role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
+    <div class="tiles" id="overviewTiles"></div>
+    <div class="grid2">
+      <div class="card"><h2>Net revenue by month</h2><p class="desc">Split by sales channel. Returns deducted.</p>
+        <div class="legend" id="legRevenue"></div><div class="chart" id="chRevenue"></div></div>
+      <div class="card"><h2>Gross margin by month</h2><p class="desc">After marketplace commission and supplier contract cost.</p>
+        <div class="chart" id="chMargin"></div></div>
+    </div>
+  </section>
+
+  <section role="tabpanel" id="panel-prices" aria-labelledby="tab-prices" hidden>
+    <p class="lead">Every Inkwell price is compared, week by week, with the same book on the competitor's site
+      (scraped twice a week, converted from GBP with that day's rate).</p>
+    <div class="tiles" id="priceTiles"></div>
+    <div class="grid2">
+      <div class="card"><h2>How much more expensive Inkwell is</h2>
+        <p class="desc">Price gap vs the competitor, weighted by units sold. Above 0 = Inkwell is dearer.</p>
+        <div class="chart" id="chGap"></div></div>
+      <div class="card"><h2>Units sold per product and week, by price position</h2>
+        <p class="desc">The dearer a book is than at the competitor, the fewer copies it sells.</p>
+        <div class="chart" id="chBands"></div></div>
+    </div>
+    <div class="card"><h2>Still much dearer than the competitor</h2>
+      <p class="desc">Average over the last 4 weeks, gap above 10 %: candidates for the next repricing.</p>
+      <div class="table-wrap" id="tblPricier"></div></div>
+  </section>
+
+  <section role="tabpanel" id="panel-invoices" aria-labelledby="tab-invoices" hidden>
+    <p class="lead">Every supplier invoice PDF is read, its arithmetic recomputed and each line compared with the
+      contract price valid on the invoice date.</p>
+    <div class="tiles" id="invoiceTiles"></div>
+    <div class="card" style="margin-bottom:16px"><h2>Money at risk per invoice</h2>
+      <p class="desc">What should not be paid as printed.</p>
+      <div class="legend" id="legInvoices"></div><div class="chart" id="chInvoices"></div></div>
+    <div class="card"><h2>Invoices that need action</h2><p class="desc">Sorted by money at risk.</p>
+      <div class="table-wrap" id="tblInvoices"></div></div>
+  </section>
+
+  <section role="tabpanel" id="panel-quality" aria-labelledby="tab-quality" hidden>
+    <p class="lead">The sources are messy on purpose, like real exports. Every problem is caught, counted and either
+      fixed or set aside with its reason — nothing is dropped silently.</p>
+    <div class="tiles" id="qualityTiles"></div>
+    <div class="grid2">
+      <div class="card"><h2>Sales lines set aside, by reason</h2><p class="desc">Kept in quarantine so they can be fixed at the source.</p>
+        <div class="chart" id="chQuarantine"></div></div>
+      <div class="card"><h2>Every line accounted for</h2><p class="desc">Raw lines = clean lines + quarantined lines.</p>
+        <div id="reconcile"></div></div>
+    </div>
+    <div class="card"><h2>All data-quality checks</h2><p class="desc">From <code>gold.mart_data_quality</code>.</p>
+      <div class="table-wrap" id="tblQuality"></div></div>
+  </section>
+
+  <footer>All companies, people and figures are fictional. Competitor catalogue: books.toscrape.com, a public scraping sandbox.
+    Built with Python, DuckDB and dbt · data generated <span id="genDate"></span>.</footer>
+</div>
+<div class="tooltip" id="tooltip" role="status" hidden></div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+/* ------------------------------------------------------------------ formatting */
+const eur = (v, d = 0) => "€" + Number(v).toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
+const eurCompact = v => Math.abs(v) >= 1e6 ? "€" + (v / 1e6).toFixed(2) + "M" : Math.abs(v) >= 1e4 ? "€" + Math.round(v / 1e3) + "K" : eur(v);
+const num = v => Number(v).toLocaleString("en-GB");
+const pct = (v, d = 1) => (v * 100).toFixed(d) + " %";
+const pctSigned = (v, d = 1) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v * 100).toFixed(d) + " %";
+const monthName = ym => new Date(ym + "-01T00:00:00").toLocaleString("en-GB", { month: "short" });
+const css = name => getComputedStyle(document.getElementById("root")).getPropertyValue(name).trim();
+const el = (tag, attrs = {}, text) => { const n = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text != null) n.textContent = text; return n; };
+const svgEl = (tag, attrs = {}) => { const n = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
+
+/* ------------------------------------------------------------------ tooltip */
+const tip = document.getElementById("tooltip");
+function showTip(evt, title, rows) {
+  tip.replaceChildren(el("div", { class: "tt-title" }, title));
+  for (const r of rows) {
+    const row = el("div", { class: "row" });
+    const key = el("span", { class: "key" });
+    if (r.color) { const b = el("b"); b.style.background = r.color; key.append(b); }
+    key.append(document.createTextNode(r.label));
+    row.append(el("strong", {}, r.value), key);
+    tip.append(row);
+  }
+  tip.hidden = false;
+  const x = evt.clientX ?? (evt.target.getBoundingClientRect().left + 10), y = evt.clientY ?? evt.target.getBoundingClientRect().top;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - w - 8, x + 14) + "px";
+  tip.style.top = Math.max(8, y - h - 10) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+
+/* ------------------------------------------------------------------ helpers */
+function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
+function niceScale(lo, hi, n = 4) {                   // clean round ticks covering [lo, hi]
+  const raw = (hi - lo) / n || Math.abs(hi) || 1, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= raw);
+  const start = Math.floor(lo / step + 1e-9) * step, end = Math.ceil(hi / step - 1e-9) * step;
+  const t = []; for (let v = start; v <= end + step / 2; v += step) t.push(Math.round(v / step) * step);
+  return { lo: start, hi: end, ticks: t };
+}
+function roundedTopRect(x, y, w, h, r) {              // 4px rounded data-end, square at the baseline
+  r = Math.min(r, w / 2, h); if (h <= 0) return "";
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+function roundedRightRect(x, y, w, h, r) {
+  r = Math.min(r, h / 2, w); if (w <= 0) return "";
+  return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
+}
+function legend(target, items, shape = "rect") {
+  const box = document.getElementById(target); box.replaceChildren();
+  for (const it of items) {
+    const s = el("span"); const i = el("i"); i.style.background = it.color;
+    if (shape === "line") { i.style.height = "2px"; i.style.width = "14px"; }
+    s.append(i, document.createTextNode(it.label)); box.append(s);
+  }
+}
+function tableView(container, columns, rows) {
+  const t = el("table", { class: "data" }); const thead = el("thead"); const tr = el("tr");
+  for (const c of columns) tr.append(el("th", c.num ? { class: "num" } : {}, c.label));
+  thead.append(tr); t.append(thead);
+  const tb = el("tbody");
+  for (const r of rows) { const row = el("tr"); for (const c of columns) { const td = el("td", c.num ? { class: "num" } : {}); const v = c.render ? c.render(r) : r[c.key]; if (v instanceof Node) td.append(v); else td.textContent = v; row.append(td); } tb.append(row); }
+  t.append(tb); container.replaceChildren(t); return t;
+}
+function withTableToggle(chartId, columns, rows) {     // every chart has a table-view twin
+  const host = document.getElementById(chartId);
+  const btn = el("button", { class: "table-toggle", type: "button", "aria-expanded": "false" }, "Show as table");
+  const box = el("div", { class: "table-wrap" }); box.hidden = true;
+  tableView(box, columns, rows);
+  btn.addEventListener("click", () => { box.hidden = !box.hidden; btn.setAttribute("aria-expanded", String(!box.hidden)); btn.textContent = box.hidden ? "Show as table" : "Hide table"; });
+  host.after(btn, box);
+}
+
+/* ------------------------------------------------------------------ charts */
+function columnChart(id, { categories, series, stacked = true, yFormat, tipTitle, height = 260, endLabel }) {
+  const host = document.getElementById(id); host.replaceChildren();
+  const W = host.clientWidth || 520, H = height, m = { t: 18, r: 8, b: 26, l: 48 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const totals = categories.map((_, i) => stacked ? series.reduce((s, se) => s + se.values[i], 0) : Math.max(...series.map(se => se.values[i])));
+  const sc = niceScale(0, Math.max(...totals) * 1.05), ymax = sc.hi;
+  const y = v => m.t + ih - (v / ymax) * ih;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": host.dataset.label || "" });
+  for (const t of sc.ticks) {
+    svg.append(svgEl("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? css("--axis") : css("--grid"), "stroke-width": 1 }));
+    const lab = svgEl("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end", class: "axis-label" }); lab.textContent = yFormat(t); svg.append(lab);
+  }
+  const band = iw / categories.length, bw = Math.min(24, band * 0.6);
+  const hits = svgEl("g"); svg.append(hits);          // hover/focus targets, in reading order (Tab goes Jan -> Oct)
+  categories.forEach((c, i) => {
+    const cx = m.l + band * i + band / 2;
+    let base = 0;
+    const g = svgEl("g", { tabindex: 0, role: "img" });
+    series.forEach((se, k) => {
+      const v = se.values[i]; const top = stacked ? base + v : v;
+      const y0 = y(stacked ? base : 0), y1 = y(top);
+      const isTop = !stacked || k === series.length - 1;
+      const gap = stacked && k > 0 ? 2 : 0;                     // 2px surface gap between stacked segments
+      const h = Math.max(0, y0 - y1 - gap);
+      const d = isTop ? roundedTopRect(cx - bw / 2, y1, bw, h, 4) : `M${cx - bw / 2},${y1}h${bw}v${h}h${-bw}Z`;
+      if (d) svg.append(svgEl("path", { d, fill: se.color, "pointer-events": "none" }));
+      base = top;
+    });
+    const lab = svgEl("text", { x: cx, y: H - 8, "text-anchor": "middle", class: "axis-label" }); lab.textContent = c; svg.append(lab);
+    const hit = svgEl("rect", { x: m.l + band * i, y: m.t, width: band, height: ih, fill: "transparent" });
+    const rows = series.map(se => ({ label: se.name, value: yFormat(se.values[i], true), color: se.color }));
+    if (stacked && series.length > 1) rows.push({ label: "Total", value: yFormat(totals[i], true) });
+    const on = e => { hit.setAttribute("fill", css("--wash")); showTip(e, tipTitle(i), rows); };
+    const off = () => { hit.setAttribute("fill", "transparent"); hideTip(); };
+    g.setAttribute("aria-label", `${tipTitle(i)}: ` + rows.map(r => `${r.label} ${r.value}`).join(", "));
+    g.append(hit); g.addEventListener("pointermove", on); g.addEventListener("pointerleave", off);
+    g.addEventListener("focus", on); g.addEventListener("blur", off);
+    hits.append(g);
+  });
+  if (endLabel) {                                               // label the last column only
+    const i = categories.length - 1, cx = m.l + band * i + band / 2;
+    const t = svgEl("text", { x: cx, y: y(totals[i]) - 6, "text-anchor": "middle", class: "data-label", "pointer-events": "none" }); t.textContent = endLabel(totals[i]); svg.append(t);
+  }
+  host.append(svg);
+}
+
+function lineChart(id, { points, xLabel, yFormat, color, height = 260, zero = false, notes = [], tipTitle, yPad = 0.15, seriesName }) {
+  const host = document.getElementById(id); host.replaceChildren();
+  const W = host.clientWidth || 520, H = height, m = { t: 22, r: 44, b: 26, l: 48 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const vals = points.map(p => p.v);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  const span = hi - lo || 1;
+  const sc = niceScale(zero && lo >= 0 ? 0 : lo - span * yPad, hi + span * yPad); lo = sc.lo; hi = sc.hi;
+  const x = i => m.l + (points.length === 1 ? iw / 2 : (i / (points.length - 1)) * iw);
+  const y = v => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": host.dataset.label || "" });
+  for (const t of sc.ticks) {
+    svg.append(svgEl("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: css("--grid"), "stroke-width": 1 }));
+    const lab = svgEl("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end", class: "axis-label" }); lab.textContent = yFormat(t); svg.append(lab);
+  }
+  if (zero) svg.append(svgEl("line", { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: css("--axis"), "stroke-width": 1 }));
+  for (const n of notes) {                                       // event markers (repricing days)
+    const xi = x(n.index);
+    svg.append(svgEl("line", { x1: xi, x2: xi, y1: m.t - 4, y2: m.t + ih, stroke: css("--axis"), "stroke-width": 1 }));
+    const t = svgEl("text", { x: xi + 4, y: m.t + 6, class: "note-label" }); t.textContent = n.label; svg.append(t);
+  }
+  const step = points.length <= 12 ? 1 : Math.max(1, Math.ceil(points.length / 8));
+  points.forEach((p, i) => { if (i % step === 0) { const t = svgEl("text", { x: x(i), y: H - 8, "text-anchor": "middle", class: "axis-label" }); t.textContent = xLabel(p); svg.append(t); } });
+  const d = points.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.v)}`).join("");
+  svg.append(svgEl("path", { d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  const last = points.length - 1;                                 // end dot + end label
+  svg.append(svgEl("circle", { cx: x(last), cy: y(points[last].v), r: 4, fill: color, stroke: css("--card"), "stroke-width": 2 }));
+  const endT = svgEl("text", { x: x(last) + 8, y: y(points[last].v) + 4, class: "data-label" }); endT.textContent = yFormat(points[last].v, true); svg.append(endT);
+  const cross = svgEl("line", { y1: m.t, y2: m.t + ih, stroke: css("--axis"), "stroke-width": 1, visibility: "hidden" });
+  const dot = svgEl("circle", { r: 4, fill: color, stroke: css("--card"), "stroke-width": 2, visibility: "hidden" });
+  svg.append(cross, dot);
+  const hit = svgEl("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent", tabindex: 0 });
+  let cur = last;
+  const show = (i, e) => {
+    cur = i; const xi = x(i), yi = y(points[i].v);
+    cross.setAttribute("x1", xi); cross.setAttribute("x2", xi); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", xi); dot.setAttribute("cy", yi); dot.setAttribute("visibility", "visible");
+    const r = hit.getBoundingClientRect();
+    showTip(e || { clientX: r.left + (xi - m.l) * r.width / iw, clientY: r.top + (yi - m.t) * r.height / ih }, tipTitle(points[i]),
+      [{ label: seriesName, value: yFormat(points[i].v, true), color }]);
+  };
+  hit.addEventListener("pointermove", e => { const r = hit.getBoundingClientRect(); const rel = (e.clientX - r.left) / r.width; show(Math.round(rel * (points.length - 1)), e); });
+  const off = () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); hideTip(); };
+  hit.addEventListener("pointerleave", off); hit.addEventListener("blur", off);
+  hit.addEventListener("focus", () => show(cur));
+  hit.addEventListener("keydown", e => { if (e.key === "ArrowRight") { show(Math.min(points.length - 1, cur + 1)); e.preventDefault(); } if (e.key === "ArrowLeft") { show(Math.max(0, cur - 1)); e.preventDefault(); } });
+  svg.append(hit); host.append(svg);
+}
+
+function barChartH(id, { rows, xFormat, labelWidth = 150, barColor }) {
+  const host = document.getElementById(id); host.replaceChildren();
+  const W = host.clientWidth || 520, rowH = 34, m = { t: 6, r: 70, b: 6, l: labelWidth };
+  const H = m.t + m.b + rows.length * rowH, iw = W - m.l - m.r;
+  const xmax = niceMax(Math.max(...rows.map(r => r.value)) * 1.02);
+  const x = v => (v / xmax) * iw;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": host.dataset.label || "" });
+  svg.append(svgEl("line", { x1: m.l, x2: m.l, y1: m.t, y2: H - m.b, stroke: css("--axis"), "stroke-width": 1 }));
+  rows.forEach((r, i) => {
+    const yc = m.t + i * rowH + rowH / 2, bh = Math.min(20, rowH - 12);
+    const g = svgEl("g", { tabindex: 0, role: "img", "aria-label": `${r.label}: ${xFormat(r.value)}` });
+    const hit = svgEl("rect", { x: 0, y: yc - rowH / 2, width: W, height: rowH, fill: "transparent" });
+    g.append(hit);
+    const lab = svgEl("text", { x: m.l - 10, y: yc + 4, "text-anchor": "end", class: "axis-label" }); lab.textContent = r.label; lab.style.fill = css("--text-secondary"); g.append(lab);
+    g.append(svgEl("path", { d: roundedRightRect(m.l + 1, yc - bh / 2, Math.max(2, x(r.value)), bh, 4), fill: r.color || barColor }));
+    const v = svgEl("text", { x: m.l + x(r.value) + 8, y: yc + 4, class: "data-label" }); v.textContent = xFormat(r.value); g.append(v);
+    const on = e => { hit.setAttribute("fill", css("--wash")); showTip(e, r.label, r.tip || [{ label: r.seriesName || "", value: xFormat(r.value), color: r.color || barColor }]); };
+    const off = () => { hit.setAttribute("fill", "transparent"); hideTip(); };
+    g.addEventListener("pointermove", on); g.addEventListener("pointerleave", off); g.addEventListener("focus", on); g.addEventListener("blur", off);
+    svg.append(g);
+  });
+  host.append(svg);
+}
+
+function tile(container, { label, value, note, hero }) {
+  const t = el("div", { class: "tile" + (hero ? " hero" : "") });
+  t.append(el("div", { class: "label" }, label), el("div", { class: "value" }, value));
+  if (note) t.append(el("div", { class: "note" }, note));
+  document.getElementById(container).append(t);
+}
+
+/* ------------------------------------------------------------------ status */
+const STATUS = {
+  "BLOCK - duplicate":              { token: "--status-critical", icon: "⛔", short: "Block: duplicate" },
+  "REVIEW - total does not add up": { token: "--status-warning",  icon: "⚠",  short: "Review: total does not add up" },
+  "CLAIM - billed above contract":  { token: "--status-serious",  icon: "▲",  short: "Claim: billed above contract" },
+  "REVIEW - no contract price":     { token: "--status-warning",  icon: "⚠",  short: "Review: no contract price" },
+};
+function statusChip(s) {
+  const st = STATUS[s] || { token: "--text-muted", icon: "•", short: s };
+  const span = el("span", { class: "status" }); const dot = el("span", { class: "dot" }); dot.style.background = css(st.token);
+  span.append(dot, document.createTextNode(`${st.icon} ${st.short}`)); return span;
+}
+
+/* ------------------------------------------------------------------ views */
+function renderOverview() {
+  const M = DATA.months;
+  const sum = k => M.reduce((s, r) => s + r[k], 0);
+  const box = document.getElementById("overviewTiles"); box.replaceChildren();
+  const rev = sum("net_revenue_eur"), mar = sum("margin_eur");
+  tile("overviewTiles", { label: "Net revenue", value: eurCompact(rev), note: `${M.length} months · 3 channels`, hero: true });
+  tile("overviewTiles", { label: "Gross margin", value: pct(mar / rev), note: eurCompact(mar) });
+  tile("overviewTiles", { label: "Books sold", value: num(sum("units_sold")), note: `${num(sum("units_returned"))} returned` });
+  tile("overviewTiles", { label: "Orders", value: num(sum("orders")), note: "returns excluded" });
+  tile("overviewTiles", { label: "Supplier money at risk", value: eur(DATA.invoice_totals.at_risk), note: `${DATA.invoice_totals.need_action} of ${DATA.invoice_totals.invoices} invoices` });
+
+  const months = M.map(r => r.year_month);
+  const chans = [["web", "Web shop", "--series-1"], ["marketplace", "Marketplace", "--series-2"], ["store", "Madrid shop", "--series-3"]];
+  const series = chans.map(([k, name, tok]) => ({ name, color: css(tok),
+    values: months.map(m => (DATA.channel_months.find(r => r.year_month === m && r.channel === k) || { net_revenue_eur: 0 }).net_revenue_eur) }));
+  legend("legRevenue", series.map(s => ({ label: s.name, color: s.color })));
+  document.getElementById("chRevenue").dataset.label = "Stacked columns: net revenue by month and channel";
+  columnChart("chRevenue", { categories: months.map(monthName), series, yFormat: (v, full) => full ? eur(v) : eurCompact(v),
+    tipTitle: i => monthName(months[i]) + " 2026", endLabel: v => eurCompact(v) });
+  document.getElementById("chMargin").dataset.label = "Line: gross margin percent by month";
+  lineChart("chMargin", { points: M.map(r => ({ k: r.year_month, v: r.margin_pct })), xLabel: p => monthName(p.k),
+    yFormat: (v, full) => pct(v), color: css("--series-1"), tipTitle: p => monthName(p.k) + " 2026", seriesName: "Gross margin", yPad: 0.4 });
+}
+
+function renderPrices() {
+  const W = DATA.weekly_gap, first = W[0], last = W[W.length - 1];
+  const box = document.getElementById("priceTiles"); box.replaceChildren();
+  tile("priceTiles", { label: "Price gap, first week of January", value: pctSigned(first.gap), note: "Inkwell dearer than the competitor" });
+  tile("priceTiles", { label: "Price gap, last week of October", value: pctSigned(last.gap), note: "after repricing in April and August" });
+  const b = Object.fromEntries(DATA.bands.map(r => [r.price_band, r]));
+  tile("priceTiles", { label: "Sales lost when much dearer", value: pctSigned(b["much pricier"].avg_units / b["cheaper"].avg_units - 1, 0),
+    note: `${b["much pricier"].avg_units} vs ${b["cheaper"].avg_units} units per product-week` });
+  tile("priceTiles", { label: "Titles still >10 % dearer", value: num(DATA.pricier_now.length), note: "last 4 weeks" });
+
+  const idx = d => W.findIndex(r => r.week_start >= d);
+  const notes = [{ index: idx("2026-03-30"), label: "Repricing" }, { index: idx("2026-07-27"), label: "Repricing" }].filter(n => n.index >= 0);
+  const wk = s => new Date(s + "T00:00:00").toLocaleString("en-GB", { day: "numeric", month: "short" });
+  document.getElementById("chGap").dataset.label = "Line: weekly price gap versus the competitor";
+  lineChart("chGap", { points: W.map(r => ({ k: r.week_start, v: r.gap })), zero: true, notes,
+    xLabel: p => wk(p.k), color: css("--series-1"),
+    // axis ticks show as many decimals as the step needs (2.5 % stays 2.5 %); the end label and tooltip use one decimal
+    yFormat: (v, full) => full ? pctSigned(v) : pctSigned(v, Math.abs(Math.round(v * 1000) % 10) ? 1 : 0).replace(" ", ""),
+    tipTitle: p => "Week of " + wk(p.k), seriesName: "Price gap" });
+  const order = ["cheaper", "aligned", "pricier", "much pricier"];
+  const names = { cheaper: "Cheaper (< −3 %)", aligned: "Aligned (±3 %)", pricier: "Dearer (3–10 %)", "much pricier": "Much dearer (> 10 %)" };
+  document.getElementById("chBands").dataset.label = "Bars: average units per product and week by price position";
+  barChartH("chBands", { labelWidth: 150, barColor: css("--series-1"),
+    rows: order.map(k => ({ label: names[k], value: b[k].avg_units, seriesName: "Units per product-week",
+      tip: [{ label: "units per product-week", value: String(b[k].avg_units), color: css("--series-1") },
+            { label: "average gap", value: pctSigned(b[k].avg_gap) }, { label: "product-weeks", value: num(b[k].product_weeks) }] })),
+    xFormat: v => v.toFixed(2) });
+  withTableToggle("chGap", [{ label: "Week", key: "week_start" }, { label: "Gap", num: true, render: r => pctSigned(r.gap) }, { label: "Units", num: true, render: r => num(r.units) }], W);
+  withTableToggle("chBands", [{ label: "Price position", render: r => names[r.price_band] }, { label: "Units per product-week", num: true, key: "avg_units" },
+    { label: "Average gap", num: true, render: r => pctSigned(r.avg_gap) }, { label: "Product-weeks", num: true, render: r => num(r.product_weeks) }],
+    order.map(k => b[k]));
+  tableView(document.getElementById("tblPricier"), [
+    { label: "SKU", key: "sku" }, { label: "Title", key: "title" },
+    { label: "Inkwell", num: true, render: r => eur(r.our_price, 2) }, { label: "Competitor", num: true, render: r => eur(r.competitor_price, 2) },
+    { label: "Gap", num: true, render: r => { const s = el("span", { class: "up-bad" }, pctSigned(r.gap)); return s; } },
+    { label: "Units (4 weeks)", num: true, render: r => num(r.units) }], DATA.pricier_now);
+}
+
+function renderInvoices() {
+  const T = DATA.invoice_totals, I = DATA.invoices;
+  document.getElementById("invoiceTiles").replaceChildren();
+  tile("invoiceTiles", { label: "Invoices checked", value: num(T.invoices), note: eurCompact(T.purchases) + " of purchases" });
+  tile("invoiceTiles", { label: "Need action", value: num(T.need_action), note: "block, review or claim" });
+  tile("invoiceTiles", { label: "Money at risk", value: eur(T.at_risk), note: "if paid as printed" });
+  const used = [...new Set(I.map(r => r.audit_status))];
+  const legBox = document.getElementById("legInvoices"); legBox.replaceChildren();
+  for (const s of used) { const sp = el("span"); sp.append(statusChip(s)); legBox.append(sp); }
+  document.getElementById("chInvoices").dataset.label = "Bars: money at risk per invoice, coloured by status";
+  barChartH("chInvoices", { labelWidth: 120, rows: I.map(r => ({
+      label: r.invoice_number, value: r.amount_at_risk_eur, color: css((STATUS[r.audit_status] || {}).token || "--text-muted"),
+      tip: [{ label: (STATUS[r.audit_status] || { short: r.audit_status }).short, value: eur(r.amount_at_risk_eur, 2), color: css((STATUS[r.audit_status] || {}).token || "--text-muted") },
+            { label: "invoice total", value: eur(r.total_printed, 2) }, { label: "date", value: r.invoice_date }] })),
+    xFormat: v => eur(v) });
+  withTableToggle("chInvoices", [{ label: "Invoice", key: "invoice_number" }, { label: "Money at risk", num: true, render: r => eur(r.amount_at_risk_eur, 2) }], I);
+  tableView(document.getElementById("tblInvoices"), [
+    { label: "Supplier", key: "supplier_code" }, { label: "Invoice", key: "invoice_number" }, { label: "Date", key: "invoice_date" },
+    { label: "Status", render: r => statusChip(r.audit_status) }, { label: "Lines above contract", num: true, key: "overbilled_lines" },
+    { label: "Invoice total", num: true, render: r => eur(r.total_printed, 2) }, { label: "Money at risk", num: true, render: r => eur(r.amount_at_risk_eur, 2) }], I);
+}
+
+function renderQuality() {
+  const R = DATA.reconciliation;
+  document.getElementById("qualityTiles").replaceChildren();
+  tile("qualityTiles", { label: "Raw sales lines received", value: num(R.raw_lines), note: `${num(R.files_loaded)} files loaded` });
+  tile("qualityTiles", { label: "Clean lines used", value: num(R.clean_lines), note: pct(R.clean_lines / R.raw_lines) + " of raw" });
+  tile("qualityTiles", { label: "Lines in quarantine", value: num(R.quarantined_lines), note: "with their reason" });
+  tile("qualityTiles", { label: "Checks that found something", value: num(DATA.quality.length), note: "see the table below" });
+  const names = { duplicate_line: "Duplicate line", unknown_product: "Unknown product", price_outlier: "Absurd price", missing_quantity: "Missing quantity",
+    date_out_of_range: "Date out of range", quantity_outlier: "Absurd quantity", ambiguous_product: "Ambiguous title", invalid_date: "Invalid date",
+    zero_quantity: "Zero quantity", invalid_price: "Invalid price" };
+  document.getElementById("chQuarantine").dataset.label = "Bars: quarantined sales lines by reason";
+  barChartH("chQuarantine", { labelWidth: 130, barColor: css("--series-1"),
+    rows: DATA.quarantine.map(r => ({ label: names[r.dq_issue] || r.dq_issue, value: r.lines, seriesName: "lines" })), xFormat: v => num(v) });
+  withTableToggle("chQuarantine", [{ label: "Reason", render: r => names[r.dq_issue] || r.dq_issue }, { label: "Lines", num: true, render: r => num(r.lines) }], DATA.quarantine);
+  const ok = R.raw_lines === R.clean_lines + R.quarantined_lines;
+  const rec = document.getElementById("reconcile"); rec.replaceChildren();
+  tableView(rec, [{ label: "", key: "k" }, { label: "Lines", num: true, render: r => num(r.v) }],
+    [{ k: "Raw lines (bronze)", v: R.raw_lines }, { k: "Clean lines (silver_sales)", v: R.clean_lines }, { k: "Quarantined lines", v: R.quarantined_lines }]);
+  const msg = el("p", { class: ok ? "check" : "up-bad" }, ok ? "✓ Every raw line is accounted for" : "✗ Lines do not reconcile");
+  rec.append(msg);
+  tableView(document.getElementById("tblQuality"), [
+    { label: "Source", key: "source" }, { label: "Check", key: "rule" }, { label: "Checked", num: true, render: r => num(r.rows_checked) },
+    { label: "Found", num: true, render: r => num(r.rows_failed) }, { label: "Share", num: true, render: r => r.failed_share == null ? "" : pct(r.failed_share, 2) },
+    { label: "What the pipeline did", key: "action" }], DATA.quality);
+}
+
+/* ------------------------------------------------------------------ tabs, theme, resize */
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+const renderers = { overview: renderOverview, prices: renderPrices, invoices: renderInvoices, quality: renderQuality };
+let active = "overview";
+function clearToggles(panel) { panel.querySelectorAll(".table-toggle").forEach(b => { b.nextSibling && b.nextSibling.remove(); b.remove(); }); }
+function render(name) {
+  const panel = document.getElementById("panel-" + name); clearToggles(panel); renderers[name]();
+}
+function select(name, focus) {
+  active = name;
+  for (const t of tabs) {
+    const on = t.id === "tab-" + name; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1;
+    document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    if (on && focus) t.focus();
+  }
+  render(name); history.replaceState(null, "", "#" + name);
+}
+tabs.forEach((t, i) => {
+  t.addEventListener("click", () => select(t.id.slice(4)));
+  t.addEventListener("keydown", e => {
+    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (d) { select(tabs[(i + d + tabs.length) % tabs.length].id.slice(4), true); e.preventDefault(); }
+  });
+});
+const themeBtn = document.getElementById("themeBtn");
+const modes = ["auto", "light", "dark"]; let mode = 0;
+const forced = new URLSearchParams(location.search).get("theme");   // ?theme=light|dark (screenshots, links)
+if (forced === "light" || forced === "dark") {
+  mode = modes.indexOf(forced); document.documentElement.setAttribute("data-theme", forced); themeBtn.textContent = "Theme: " + forced;
+}
+themeBtn.addEventListener("click", () => {
+  mode = (mode + 1) % 3; const m = modes[mode];
+  if (m === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", m);
+  themeBtn.textContent = "Theme: " + m; render(active);
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => render(active));
+let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => render(active), 150); });
+document.getElementById("genDate").textContent = DATA.generated;
+const start = (location.hash || "#overview").slice(1);
+select(renderers[start] ? start : "overview");
+</script>
+</body>
+</html>
