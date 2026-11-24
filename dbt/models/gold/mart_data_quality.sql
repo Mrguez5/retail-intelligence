@@ -69,7 +69,7 @@ select
     a.rows_failed,
     round(a.rows_failed / c.rows_checked, 4) as failed_share,
     case
-        when a.rule = 'duplicate_line'                        then 'dropped (first copy kept)'
+        when a.rule = 'duplicate_line'                        then 'dropped (copy from the latest export kept)'
         when a.rule like 'matched_by_%'                       then 'fixed automatically'
         when a.rule = 'competitor_link_title_match'           then 'fixed automatically'
         when a.rule like 'competitor_link_%'                  then 'no competitor price for this product'

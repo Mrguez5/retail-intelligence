@@ -66,7 +66,7 @@ unless the pipeline finds **exactly** those defects.
 
 | Source | Problem | Rows | What the pipeline does |
 |---|---|---|---|
-| Marketplace CSV | Monthly exports overlap by 3 days | 590 | De-duplicated (first copy kept) |
+| Marketplace CSV | Monthly exports overlap by 3 days | 590 | De-duplicated (copy from the latest export kept) |
 | Marketplace CSV | Seller SKU missing | 697 | Matched by title |
 | Shop Excel | No SKU, titles typed by hand (case, missing or swapped letters) | 3,289 | Exact title key, then fuzzy match (Damerau-Levenshtein ≤ 2 or Jaro-Winkler ≥ 0.95); score kept for audit |
 | Shop Excel | Price typed ×10 (14.99 → 149.9) | 16 | Quarantined (`price_outlier`) |
@@ -109,6 +109,7 @@ python run.py all                 # generate sources → bronze → dbt build (m
 | `python run.py transform` | `dbt build`: silver and gold models and all data tests |
 | `python run.py scrape` | Optional: a real snapshot of books.toscrape.com into `data/raw/competitor/` |
 | `python run.py report` | Prints the main results: `kpis`, `invoices`, `prices`, `quality` (or `--sql "select …"` for your own query) |
+| `python run.py ui` | Opens every table in DuckDB's web UI at http://localhost:4213 (press Enter in the terminal to close it) |
 
 The warehouse is a single file, `data/warehouse/retail.duckdb`. You can open it with the DuckDB
 CLI, DBeaver, Python or Power BI (ODBC).
