@@ -143,8 +143,9 @@ footer { color: var(--text-muted); font-size: 12.5px; margin-top: 28px; border-t
     <p class="lead">Every supplier invoice PDF is read, its arithmetic recomputed and each line compared with the
       contract price valid on the invoice date.</p>
     <div class="tiles" id="invoiceTiles"></div>
-    <div class="card" style="margin-bottom:16px"><h2>Money at risk per invoice</h2>
-      <p class="desc">What should not be paid as printed.</p>
+    <div class="card" style="margin-bottom:16px"><h2>Overcharges per invoice</h2>
+      <p class="desc">Only the excess counts: charged above the contract price, or a total that does not add up.
+        Duplicate invoices are not shown here: they are blocked in full (see the tile above).</p>
       <div class="legend" id="legInvoices"></div><div class="chart" id="chInvoices"></div></div>
     <div class="card"><h2>Invoices that need action</h2><p class="desc">Sorted by money at risk.</p>
       <div class="table-wrap" id="tblInvoices"></div></div>
@@ -455,17 +456,24 @@ function renderInvoices() {
   document.getElementById("invoiceTiles").replaceChildren();
   tile("invoiceTiles", { label: "Invoices checked", value: num(T.invoices), note: eurCompact(T.purchases) + " of purchases" });
   tile("invoiceTiles", { label: "Need action", value: num(T.need_action), note: "block, review or claim" });
-  tile("invoiceTiles", { label: "Money at risk", value: eur(T.at_risk), note: "if paid as printed" });
-  const used = [...new Set(I.map(r => r.audit_status))];
+  // two different kinds of risk, kept apart: a duplicate puts its whole total at risk,
+  // an overcharge only its excess, so they cannot share one scale
+  const dup = I.filter(r => r.audit_status.startsWith("BLOCK")), over = I.filter(r => !r.audit_status.startsWith("BLOCK"));
+  const total = rows => rows.reduce((s, r) => s + r.amount_at_risk_eur, 0);
+  tile("invoiceTiles", { label: "Duplicate invoices to block", value: eur(total(dup)),
+    note: `${dup.length} invoice${dup.length === 1 ? "" : "s"} received twice · whole total` });
+  tile("invoiceTiles", { label: "Overcharges to claim or review", value: eur(total(over)),
+    note: `${over.length} invoices · only the excess` });
+  const used = [...new Set(over.map(r => r.audit_status))];
   const legBox = document.getElementById("legInvoices"); legBox.replaceChildren();
   for (const s of used) { const sp = el("span"); sp.append(statusChip(s)); legBox.append(sp); }
-  document.getElementById("chInvoices").dataset.label = "Bars: money at risk per invoice, coloured by status";
-  barChartH("chInvoices", { labelWidth: 120, rows: I.map(r => ({
+  document.getElementById("chInvoices").dataset.label = "Bars: overcharge per invoice, coloured by status";
+  barChartH("chInvoices", { labelWidth: 120, rows: over.map(r => ({
       label: r.invoice_number, value: r.amount_at_risk_eur, color: css((STATUS[r.audit_status] || {}).token || "--text-muted"),
       tip: [{ label: (STATUS[r.audit_status] || { short: r.audit_status }).short, value: eur(r.amount_at_risk_eur, 2), color: css((STATUS[r.audit_status] || {}).token || "--text-muted") },
             { label: "invoice total", value: eur(r.total_printed, 2) }, { label: "date", value: r.invoice_date }] })),
     xFormat: v => eur(v) });
-  withTableToggle("chInvoices", [{ label: "Invoice", key: "invoice_number" }, { label: "Money at risk", num: true, render: r => eur(r.amount_at_risk_eur, 2) }], I);
+  withTableToggle("chInvoices", [{ label: "Invoice", key: "invoice_number" }, { label: "Overcharge", num: true, render: r => eur(r.amount_at_risk_eur, 2) }], over);
   tableView(document.getElementById("tblInvoices"), [
     { label: "Supplier", key: "supplier_code" }, { label: "Invoice", key: "invoice_number" }, { label: "Date", key: "invoice_date" },
     { label: "Status", render: r => statusChip(r.audit_status) }, { label: "Lines above contract", num: true, key: "overbilled_lines" },
