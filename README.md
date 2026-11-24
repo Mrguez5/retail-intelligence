@@ -10,7 +10,7 @@ data tests**. The output answers three business questions:
 
 Runs from scratch in about 20 seconds on a laptop, for free. No cloud account needed.
 
-📖 **[Data dictionary](docs/data_dictionary.md)**: every table and column, with type, primary and foreign keys, grain, lineage and checks.
+📖 **[Data dictionary](docs/data_dictionary.md)**: every table and column, with type, primary and foreign keys, grain, lineage and checks (also as a [PDF](docs/data_dictionary.pdf)).
 
 > All companies, people and figures are fictional. The competitor catalogue is
 > [books.toscrape.com](https://books.toscrape.com), a public sandbox built for scraping practice.
@@ -124,6 +124,7 @@ python run.py all                 # generate sources → bronze → dbt build (m
 | `python run.py report` | Prints the main results: `kpis`, `invoices`, `prices`, `quality` (or `--sql "select …"` for your own query) |
 | `python run.py ui` | Opens every table in DuckDB's web UI at http://localhost:4213 (press Enter in the terminal to close it) |
 | `python run.py docs` | Regenerates [docs/data_dictionary.md](docs/data_dictionary.md) from the dbt YAML descriptions and the warehouse (types, keys, row counts, tests) |
+| `python run.py docs --pdf` | Same, plus a styled HTML page and an A4 landscape PDF (printed with Edge or Chrome, no extra package) |
 
 The warehouse is a single file, `data/warehouse/retail.duckdb`. You can open it with the DuckDB
 CLI, DBeaver, Python or Power BI (ODBC).

@@ -9,6 +9,7 @@
     python run.py report --sql "select ..."   # any query against the warehouse
     python run.py ui           # browse every table in DuckDB's web UI (http://localhost:4213)
     python run.py docs         # regenerate docs/data_dictionary.md (tables, columns, types, keys)
+    python run.py docs --pdf   # ... and also docs/data_dictionary.html + .pdf (A4 landscape)
 """
 from __future__ import annotations
 
@@ -100,6 +101,7 @@ def main() -> None:
     ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report", "ui", "docs"])
     ap.add_argument("report", nargs="?", choices=list(REPORTS), help="report: show only this one")
     ap.add_argument("--sql", help="report: run your own query against the warehouse")
+    ap.add_argument("--pdf", action="store_true", help="docs: also export a styled HTML page and a PDF")
     args = ap.parse_args()
     if args.command == "report":
         cmd_report(args.report, args.sql)
@@ -109,7 +111,11 @@ def main() -> None:
         return
     if args.command == "docs":
         from pipeline import data_dictionary
-        data_dictionary.generate()
+        md = data_dictionary.generate()
+        if args.pdf:
+            from pipeline import doc_export
+            html_path, pdf_path = doc_export.export(md)
+            print(f"{html_path.relative_to(config.ROOT)}" + (f" and {pdf_path.relative_to(config.ROOT)}" if pdf_path else ""))
         return
     if args.command in ("generate", "all"):
         cmd_generate()

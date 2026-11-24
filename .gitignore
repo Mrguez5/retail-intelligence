@@ -10,3 +10,5 @@ dbt/dbt_packages/
 logs/
 .user.yml
 ~$*
+# generated HTML page (the PDF is versioned)
+docs/*.html
