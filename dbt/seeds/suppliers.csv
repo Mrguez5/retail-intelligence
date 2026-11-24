@@ -1,0 +1,3 @@
+supplier_code,supplier_name,country,invoice_layout,vat_rate,payment_terms_days
+NWD,Northwind Book Distribution Ltd.,IE,northwind_en,0.00,30
+PLW,Paperleaf Distribuciones S.L.,ES,paperleaf_es,0.04,30

@@ -1,0 +1,7 @@
+retail_intelligence:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: data/warehouse/retail.duckdb   # relative to the repo root
+      threads: 4

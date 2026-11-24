@@ -1,0 +1,4 @@
+channel,channel_name,source_format,commission_rate
+web,Web shop,CSV (ISO dates),0.00
+marketplace,Marketplace,"CSV (; separator, decimal comma, overlapping exports)",0.15
+store,Madrid shop,Excel typed by hand,0.00

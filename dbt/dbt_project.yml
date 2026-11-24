@@ -1,0 +1,29 @@
+name: retail_intelligence
+version: "1.0.0"
+profile: retail_intelligence
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  raw_dir: "data/raw"          # relative to the repo root (run.py runs dbt from there)
+
+models:
+  retail_intelligence:
+    +materialized: table
+    silver:
+      +schema: silver
+    gold:
+      +schema: gold
+
+seeds:
+  retail_intelligence:
+    +schema: reference
+
+data_tests:
+  retail_intelligence:
+    +severity: error

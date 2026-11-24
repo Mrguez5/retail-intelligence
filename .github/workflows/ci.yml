@@ -1,0 +1,22 @@
+name: pipeline
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Generate sources, ingest to bronze, build silver/gold and run all data tests
+        run: python run.py all
+      - name: Incremental check (second ingest must load nothing)
+        run: python run.py ingest 2>&1 | tee ingest.log && grep -q "0 files loaded" ingest.log

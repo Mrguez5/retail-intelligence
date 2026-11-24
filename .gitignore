@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+# generated: rebuild with `python run.py all`
+data/raw/
+data/warehouse/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+logs/
+.user.yml
+~$*

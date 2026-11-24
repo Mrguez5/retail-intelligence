@@ -1,0 +1,16 @@
+version: 2
+sources:
+  - name: bronze
+    description: Raw files landed as text by pipeline/bronze.py (one table per source).
+    schema: bronze
+    tables:
+      - name: erp_products
+      - name: contract_prices
+      - name: fx_rates
+      - name: competitor_snapshots
+      - name: sales_web
+      - name: sales_marketplace
+      - name: sales_store
+      - name: invoice_headers
+      - name: invoice_lines
+      - name: _ingestion_log

@@ -1,0 +1,12 @@
+# Python 3.11-3.13 recommended (what CI uses).
+# On Python 3.14+ dbt-core still pins an old mashumaro: after installing, run
+#   pip install -U mashumaro
+duckdb>=1.3
+dbt-duckdb>=1.9
+pandas>=2.2
+numpy>=2.0
+openpyxl>=3.1
+reportlab>=4.0
+pdfplumber>=0.11
+requests>=2.31
+beautifulsoup4>=4.12
