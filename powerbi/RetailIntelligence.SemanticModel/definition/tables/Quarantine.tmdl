@@ -1,0 +1,48 @@
+table Quarantine
+	lineageTag: b57f1dac-6fc9-5647-a042-00b8b4f18fd8
+
+	measure 'Quarantined Lines' = SUM ( Quarantine[Lines] )
+		formatString: #,0
+		displayFolder: Data Quality
+		lineageTag: 99f66b40-53c2-5242-8dba-b1e44a3b27e1
+
+	measure 'Raw Lines' = [Clean Lines] + [Quarantined Lines]
+		formatString: #,0
+		displayFolder: Data Quality
+		lineageTag: e53b64ec-bba0-53a7-9498-09646e802d67
+
+	measure 'Clean Share' = DIVIDE ( [Clean Lines], [Raw Lines] )
+		formatString: 0.0%
+		displayFolder: Data Quality
+		lineageTag: b4cc43bc-050e-58a3-b955-dc38b94dc185
+
+	column Channel
+		dataType: string
+		isHidden
+		summarizeBy: none
+		lineageTag: fcf108ec-e80e-5219-bdb7-70c33989a1db
+		sourceColumn: Channel
+
+	column Reason
+		dataType: string
+		summarizeBy: none
+		lineageTag: f879e13e-16c4-5a43-bed8-5b10d97f164a
+		sourceColumn: Reason
+
+	column Lines
+		dataType: int64
+		formatString: #,0
+		summarizeBy: sum
+		lineageTag: 49d295a0-12d4-5700-8518-d7e39df72674
+		sourceColumn: Lines
+
+	partition Quarantine = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(DataFolder & "\Quarantine.parquet")),
+				    Typed = Table.TransformColumnTypes(Source, {{"Channel", type text}, {"Reason", type text}, {"Lines", Int64.Type}})
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

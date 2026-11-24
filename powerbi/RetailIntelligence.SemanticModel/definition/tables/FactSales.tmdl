@@ -1,0 +1,257 @@
+table FactSales
+	lineageTag: b9187395-c774-5660-88b9-ad36e80e5b45
+
+	measure 'Net Revenue' = SUM ( FactSales[NetRevenue] )
+		formatString: €#,0
+		displayFolder: Sales
+		lineageTag: 75ddc5d9-f6ec-5caa-9b65-a5a8f6aceeb3
+
+	measure 'Gross Margin' = SUM ( FactSales[Margin] )
+		formatString: €#,0
+		displayFolder: Sales
+		lineageTag: 58ed39fa-dee2-5b74-9f75-52dbda4ebd10
+
+	measure 'Gross Margin %' = DIVIDE ( [Gross Margin], [Net Revenue] )
+		formatString: 0.0%
+		displayFolder: Sales
+		lineageTag: d1ee43ca-e73a-5915-a205-ded6ec2a2ca1
+
+	measure 'Units Sold' = CALCULATE ( SUM ( FactSales[Quantity] ), FactSales[IsReturn] = FALSE () )
+		formatString: #,0
+		displayFolder: Sales
+		lineageTag: 9b59b2c8-5249-554a-83cb-931e2019e9cf
+
+	measure 'Units Returned' = - CALCULATE ( SUM ( FactSales[Quantity] ), FactSales[IsReturn] = TRUE () )
+		formatString: #,0
+		displayFolder: Sales
+		lineageTag: 75835945-48f6-558c-9234-ef31c9a5c3e8
+
+	measure Orders = CALCULATE ( DISTINCTCOUNT ( FactSales[OrderKey] ), FactSales[IsReturn] = FALSE () )
+		formatString: #,0
+		displayFolder: Sales
+		lineageTag: de9e63cc-c6c6-52a4-a46a-f2d2a2e15d93
+
+	measure 'Avg Order Value' = DIVIDE ( [Net Revenue], [Orders] )
+		formatString: €#,0.00
+		displayFolder: Sales
+		lineageTag: bb69cace-70f0-5572-af1b-924c90d4f12e
+
+	measure 'Marketplace Commission' = SUM ( FactSales[Commission] )
+		formatString: €#,0
+		displayFolder: Sales
+		lineageTag: e4010d62-ec74-5b09-8307-79ef9887453b
+
+	measure 'Clean Lines' = COUNTROWS ( FactSales )
+		formatString: #,0
+		displayFolder: Data Quality
+		lineageTag: 3ae35623-ae00-5a12-8afe-9788be3c592c
+
+	measure 'Revenue Trend' =
+			VAR MaxSaleDate = CALCULATE ( MAX ( FactSales[Date] ), REMOVEFILTERS ( DimDate ) )
+			VAR CurStart = EOMONTH ( MaxSaleDate, -1 ) + 1
+			VAR PrevStart = EOMONTH ( MaxSaleDate, -2 ) + 1
+			VAR Cur = CALCULATE ( [Net Revenue], REMOVEFILTERS ( DimDate ), DimDate[Date] >= CurStart, DimDate[Date] <= EOMONTH ( MaxSaleDate, 0 ) )
+			VAR Prev = CALCULATE ( [Net Revenue], REMOVEFILTERS ( DimDate ), DimDate[Date] >= PrevStart, DimDate[Date] < CurStart )
+			VAR Delta = DIVIDE ( Cur - Prev, Prev )
+			RETURN
+			    IF ( ISBLANK ( Cur ) || ISBLANK ( Prev ), BLANK (),
+			        IF ( Delta >= 0, "▲ ", "▼ " ) & FORMAT ( ABS ( Delta ), "0.0%" ) & "   " & FORMAT ( CurStart, "mmm" ) & " vs " & FORMAT ( PrevStart, "mmm" ) )
+		displayFolder: Trends
+		lineageTag: 266b65ee-ccf3-5e5a-8a16-8843eddb22b6
+
+	measure 'Revenue Trend Color' =
+			VAR MaxSaleDate = CALCULATE ( MAX ( FactSales[Date] ), REMOVEFILTERS ( DimDate ) )
+			VAR CurStart = EOMONTH ( MaxSaleDate, -1 ) + 1
+			VAR PrevStart = EOMONTH ( MaxSaleDate, -2 ) + 1
+			VAR Cur = CALCULATE ( [Net Revenue], REMOVEFILTERS ( DimDate ), DimDate[Date] >= CurStart, DimDate[Date] <= EOMONTH ( MaxSaleDate, 0 ) )
+			VAR Prev = CALCULATE ( [Net Revenue], REMOVEFILTERS ( DimDate ), DimDate[Date] >= PrevStart, DimDate[Date] < CurStart )
+			VAR Delta = DIVIDE ( Cur - Prev, Prev )
+			RETURN
+			    IF ( ISBLANK ( Delta ), BLANK (), IF ( Delta >= 0, "#4ade80", "#f87171" ) )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: cd1920a5-ad1f-58fe-a2e9-7b2554c40f9b
+
+	measure 'Margin Trend' =
+			VAR MaxSaleDate = CALCULATE ( MAX ( FactSales[Date] ), REMOVEFILTERS ( DimDate ) )
+			VAR CurStart = EOMONTH ( MaxSaleDate, -1 ) + 1
+			VAR PrevStart = EOMONTH ( MaxSaleDate, -2 ) + 1
+			VAR Cur = CALCULATE ( [Gross Margin %], REMOVEFILTERS ( DimDate ), DimDate[Date] >= CurStart, DimDate[Date] <= EOMONTH ( MaxSaleDate, 0 ) )
+			VAR Prev = CALCULATE ( [Gross Margin %], REMOVEFILTERS ( DimDate ), DimDate[Date] >= PrevStart, DimDate[Date] < CurStart )
+			VAR Delta = Cur - Prev
+			RETURN
+			    IF ( ISBLANK ( Cur ) || ISBLANK ( Prev ), BLANK (),
+			        IF ( Delta >= 0, "▲ ", "▼ " ) & FORMAT ( ABS ( Delta ) * 100, "0.0" ) & " pp" & "   " & FORMAT ( CurStart, "mmm" ) & " vs " & FORMAT ( PrevStart, "mmm" ) )
+		displayFolder: Trends
+		lineageTag: e48cdec8-78c2-5225-8543-26f72b14b62a
+
+	measure 'Margin Trend Color' =
+			VAR MaxSaleDate = CALCULATE ( MAX ( FactSales[Date] ), REMOVEFILTERS ( DimDate ) )
+			VAR CurStart = EOMONTH ( MaxSaleDate, -1 ) + 1
+			VAR PrevStart = EOMONTH ( MaxSaleDate, -2 ) + 1
+			VAR Cur = CALCULATE ( [Gross Margin %], REMOVEFILTERS ( DimDate ), DimDate[Date] >= CurStart, DimDate[Date] <= EOMONTH ( MaxSaleDate, 0 ) )
+			VAR Prev = CALCULATE ( [Gross Margin %], REMOVEFILTERS ( DimDate ), DimDate[Date] >= PrevStart, DimDate[Date] < CurStart )
+			VAR Delta = Cur - Prev
+			RETURN
+			    IF ( ISBLANK ( Delta ), BLANK (), IF ( Delta >= 0, "#4ade80", "#f87171" ) )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: e3f55d47-975c-5452-a919-af74ff18ae38
+
+	measure 'Orders Trend' =
+			VAR MaxSaleDate = CALCULATE ( MAX ( FactSales[Date] ), REMOVEFILTERS ( DimDate ) )
+			VAR CurStart = EOMONTH ( MaxSaleDate, -1 ) + 1
+			VAR PrevStart = EOMONTH ( MaxSaleDate, -2 ) + 1
+			VAR Cur = CALCULATE ( [Orders], REMOVEFILTERS ( DimDate ), DimDate[Date] >= CurStart, DimDate[Date] <= EOMONTH ( MaxSaleDate, 0 ) )
+			VAR Prev = CALCULATE ( [Orders], REMOVEFILTERS ( DimDate ), DimDate[Date] >= PrevStart, DimDate[Date] < CurStart )
+			VAR Delta = DIVIDE ( Cur - Prev, Prev )
+			RETURN
+			    IF ( ISBLANK ( Cur ) || ISBLANK ( Prev ), BLANK (),
+			        IF ( Delta >= 0, "▲ ", "▼ " ) & FORMAT ( ABS ( Delta ), "0.0%" ) & "   " & FORMAT ( CurStart, "mmm" ) & " vs " & FORMAT ( PrevStart, "mmm" ) )
+		displayFolder: Trends
+		lineageTag: 17a4e012-0a2a-54a4-9d4c-25113dfd99f1
+
+	measure 'Orders Trend Color' =
+			VAR MaxSaleDate = CALCULATE ( MAX ( FactSales[Date] ), REMOVEFILTERS ( DimDate ) )
+			VAR CurStart = EOMONTH ( MaxSaleDate, -1 ) + 1
+			VAR PrevStart = EOMONTH ( MaxSaleDate, -2 ) + 1
+			VAR Cur = CALCULATE ( [Orders], REMOVEFILTERS ( DimDate ), DimDate[Date] >= CurStart, DimDate[Date] <= EOMONTH ( MaxSaleDate, 0 ) )
+			VAR Prev = CALCULATE ( [Orders], REMOVEFILTERS ( DimDate ), DimDate[Date] >= PrevStart, DimDate[Date] < CurStart )
+			VAR Delta = DIVIDE ( Cur - Prev, Prev )
+			RETURN
+			    IF ( ISBLANK ( Delta ), BLANK (), IF ( Delta >= 0, "#4ade80", "#f87171" ) )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: acbc3663-fea5-5f49-9177-3706d0b0006a
+
+	measure 'Units Trend' =
+			VAR MaxSaleDate = CALCULATE ( MAX ( FactSales[Date] ), REMOVEFILTERS ( DimDate ) )
+			VAR CurStart = EOMONTH ( MaxSaleDate, -1 ) + 1
+			VAR PrevStart = EOMONTH ( MaxSaleDate, -2 ) + 1
+			VAR Cur = CALCULATE ( [Units Sold], REMOVEFILTERS ( DimDate ), DimDate[Date] >= CurStart, DimDate[Date] <= EOMONTH ( MaxSaleDate, 0 ) )
+			VAR Prev = CALCULATE ( [Units Sold], REMOVEFILTERS ( DimDate ), DimDate[Date] >= PrevStart, DimDate[Date] < CurStart )
+			VAR Delta = DIVIDE ( Cur - Prev, Prev )
+			RETURN
+			    IF ( ISBLANK ( Cur ) || ISBLANK ( Prev ), BLANK (),
+			        IF ( Delta >= 0, "▲ ", "▼ " ) & FORMAT ( ABS ( Delta ), "0.0%" ) & "   " & FORMAT ( CurStart, "mmm" ) & " vs " & FORMAT ( PrevStart, "mmm" ) )
+		displayFolder: Trends
+		lineageTag: 979b8647-05b4-5805-b8de-447339370f46
+
+	measure 'Units Trend Color' =
+			VAR MaxSaleDate = CALCULATE ( MAX ( FactSales[Date] ), REMOVEFILTERS ( DimDate ) )
+			VAR CurStart = EOMONTH ( MaxSaleDate, -1 ) + 1
+			VAR PrevStart = EOMONTH ( MaxSaleDate, -2 ) + 1
+			VAR Cur = CALCULATE ( [Units Sold], REMOVEFILTERS ( DimDate ), DimDate[Date] >= CurStart, DimDate[Date] <= EOMONTH ( MaxSaleDate, 0 ) )
+			VAR Prev = CALCULATE ( [Units Sold], REMOVEFILTERS ( DimDate ), DimDate[Date] >= PrevStart, DimDate[Date] < CurStart )
+			VAR Delta = DIVIDE ( Cur - Prev, Prev )
+			RETURN
+			    IF ( ISBLANK ( Delta ), BLANK (), IF ( Delta >= 0, "#4ade80", "#f87171" ) )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: 2032a701-ceb2-5948-a0d6-8f37edc16981
+
+	measure 'Margin Color' =
+			VAR M = [Gross Margin %]
+			RETURN SWITCH ( TRUE (), ISBLANK ( M ), BLANK (), M >= 0.36, "#15803d", M >= 0.33, "#b45309", "#b91c1c" )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: c62dfae3-9403-5486-996f-ec2f77c40a0f
+
+	column SaleLineId
+		dataType: string
+		summarizeBy: none
+		lineageTag: 59cd8af3-9a59-5c60-a66a-6d6ce2a5fdd0
+		sourceColumn: SaleLineId
+
+	column Date
+		dataType: dateTime
+		formatString: Short Date
+		summarizeBy: none
+		lineageTag: 2e143560-641f-5150-badc-aca17e8fdd03
+		sourceColumn: Date
+
+	column Channel
+		dataType: string
+		isHidden
+		summarizeBy: none
+		lineageTag: 8bc65064-ae16-56ca-82fa-6881081014f4
+		sourceColumn: Channel
+
+	column Sku
+		dataType: string
+		isHidden
+		summarizeBy: none
+		lineageTag: 651a012b-8697-5d76-b35b-d42a7d33122d
+		sourceColumn: Sku
+
+	column OrderKey
+		dataType: string
+		isHidden
+		summarizeBy: none
+		lineageTag: aa4b1c25-66f6-5b6f-8d90-196d5271df72
+		sourceColumn: OrderKey
+
+	column Quantity
+		dataType: int64
+		formatString: #,0
+		summarizeBy: sum
+		lineageTag: 5e31e26d-88e2-52b7-906a-5518bb9c0b7a
+		sourceColumn: Quantity
+
+	column UnitPrice
+		dataType: double
+		formatString: €#,0.00
+		summarizeBy: none
+		lineageTag: 3aa4d598-82c9-544c-a2af-6a6884a10547
+		sourceColumn: UnitPrice
+
+	column NetRevenue
+		dataType: double
+		formatString: €#,0
+		summarizeBy: sum
+		lineageTag: 068ac4f0-e5c6-55ba-9870-68eb45bc07ae
+		sourceColumn: NetRevenue
+
+	column Commission
+		dataType: double
+		formatString: €#,0
+		summarizeBy: sum
+		lineageTag: 687ebafc-4a80-5373-a080-70f18628809e
+		sourceColumn: Commission
+
+	column Cogs
+		dataType: double
+		formatString: €#,0
+		summarizeBy: sum
+		lineageTag: a324865f-f5ac-589a-84cb-de27894bd866
+		sourceColumn: Cogs
+
+	column Margin
+		dataType: double
+		formatString: €#,0
+		summarizeBy: sum
+		lineageTag: b81630e9-3921-5e6b-aafa-e98fe7be4ad9
+		sourceColumn: Margin
+
+	column IsReturn
+		dataType: boolean
+		summarizeBy: none
+		lineageTag: 3977bb99-89fe-5929-9b50-8a66d297a342
+		sourceColumn: IsReturn
+
+	column MatchMethod
+		dataType: string
+		summarizeBy: none
+		lineageTag: 1fb42370-cf45-5147-ae31-b3200d547a02
+		sourceColumn: MatchMethod
+
+	partition FactSales = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(DataFolder & "\FactSales.parquet")),
+				    Typed = Table.TransformColumnTypes(Source, {{"SaleLineId", type text}, {"Date", type date}, {"Channel", type text}, {"Sku", type text}, {"OrderKey", type text}, {"Quantity", Int64.Type}, {"UnitPrice", type number}, {"NetRevenue", type number}, {"Commission", type number}, {"Cogs", type number}, {"Margin", type number}, {"IsReturn", type logical}, {"MatchMethod", type text}})
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

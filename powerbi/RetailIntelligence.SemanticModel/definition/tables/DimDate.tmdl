@@ -1,0 +1,56 @@
+table DimDate
+	dataCategory: Time
+	lineageTag: f88b99ee-d364-590b-89dc-0c87203fdfc6
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: Short Date
+		summarizeBy: none
+		lineageTag: 4ee52bf0-a1d1-5aad-b1da-3682b88b8115
+		sourceColumn: Date
+
+	column Year
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		lineageTag: 41a53203-d01d-59f6-9f97-9894bc07c167
+		sourceColumn: Year
+
+	column MonthNumber
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: 8d8273da-7406-5669-89f8-f2006502f291
+		sourceColumn: MonthNumber
+
+	column MonthName
+		dataType: string
+		sortByColumn: MonthNumber
+		summarizeBy: none
+		lineageTag: 921d1767-bd2c-5695-bc56-246542bfad27
+		sourceColumn: MonthName
+
+	column YearMonth
+		dataType: string
+		summarizeBy: none
+		lineageTag: 5fef2bc2-1034-5c70-a9c5-af7fb3c6ad01
+		sourceColumn: YearMonth
+
+	column WeekStart
+		dataType: dateTime
+		formatString: Short Date
+		summarizeBy: none
+		lineageTag: f43f75bf-2990-5287-985a-9a70daf93f0f
+		sourceColumn: WeekStart
+
+	partition DimDate = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(DataFolder & "\DimDate.parquet")),
+				    Typed = Table.TransformColumnTypes(Source, {{"Date", type date}, {"Year", Int64.Type}, {"MonthNumber", Int64.Type}, {"MonthName", type text}, {"YearMonth", type text}, {"WeekStart", type date}})
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

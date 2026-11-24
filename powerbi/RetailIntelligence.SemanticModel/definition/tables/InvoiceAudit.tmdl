@@ -1,0 +1,113 @@
+table InvoiceAudit
+	lineageTag: a0207e25-95e2-5a4d-a38a-ec212f6f3887
+
+	measure 'Invoices Checked' = COUNTROWS ( InvoiceAudit )
+		formatString: #,0
+		displayFolder: Invoices
+		lineageTag: a8fc1a50-598d-5fe0-886b-687a3a8860f9
+
+	measure 'Invoices Need Action' = CALCULATE ( COUNTROWS ( InvoiceAudit ), InvoiceAudit[Status] <> "OK" )
+		formatString: #,0
+		displayFolder: Invoices
+		lineageTag: ce5c5046-173b-54b7-bdaf-90fbc3c3df2c
+
+	measure 'Duplicates To Block' = CALCULATE ( SUM ( InvoiceAudit[AmountAtRisk] ), InvoiceAudit[StatusGroup] = "Duplicate" )
+		formatString: €#,0
+		displayFolder: Invoices
+		lineageTag: 5c6e1b41-6301-5dd0-b74f-e10b571214df
+
+	measure Overcharges = CALCULATE ( SUM ( InvoiceAudit[AmountAtRisk] ), InvoiceAudit[StatusGroup] = "Overcharge" )
+		formatString: €#,0
+		displayFolder: Invoices
+		lineageTag: f096b255-8f09-59cb-8ebb-8adbbf7f2818
+
+	measure 'Money At Risk' = SUM ( InvoiceAudit[AmountAtRisk] )
+		formatString: €#,0
+		displayFolder: Invoices
+		lineageTag: b70ed604-fdb3-57fc-a085-57a87907b84b
+
+	measure 'Audit Color' = SWITCH ( SELECTEDVALUE ( InvoiceAudit[Status] ), "BLOCK - duplicate", "#b91c1c", "CLAIM - billed above contract", "#fb923c", "REVIEW - total does not add up", "#facc15", "REVIEW - no contract price", "#facc15", "#475569" )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: 4bb5273a-3565-5a06-ad43-bab3748fe4fe
+
+	measure 'Status Color' = SWITCH ( SELECTEDVALUE ( InvoiceAudit[StatusGroup] ), "Duplicate", "#b91c1c", "Overcharge", "#b45309", "OK", "#15803d" )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: 9410e175-7fcb-5aa1-b6ac-a9acfa2024f9
+
+	column SupplierCode
+		dataType: string
+		isHidden
+		summarizeBy: none
+		lineageTag: 4c0d7e09-2fd2-5837-8c11-cc685ea80b8b
+		sourceColumn: SupplierCode
+
+	column Supplier
+		dataType: string
+		summarizeBy: none
+		lineageTag: a1a19a7e-e4bf-520f-be89-fdf6d5cc788b
+		sourceColumn: Supplier
+
+	column InvoiceNumber
+		dataType: string
+		summarizeBy: none
+		lineageTag: c0110203-4208-5f4e-b515-16f955cd633c
+		sourceColumn: InvoiceNumber
+
+	column InvoiceDate
+		dataType: dateTime
+		formatString: Short Date
+		summarizeBy: none
+		lineageTag: 39860792-cb88-5d94-ad32-4a0bea9664d8
+		sourceColumn: InvoiceDate
+
+	column SourceFile
+		dataType: string
+		summarizeBy: none
+		lineageTag: 9f4769c4-d71d-5231-9d02-0ea680c80a18
+		sourceColumn: SourceFile
+
+	column Status
+		dataType: string
+		summarizeBy: none
+		lineageTag: 00a23f24-eee0-56c9-a555-69c9dd7d5ace
+		sourceColumn: Status
+
+	column StatusGroup
+		dataType: string
+		summarizeBy: none
+		lineageTag: ff10a285-cb65-584c-bc1d-cacab4f6a5be
+		sourceColumn: StatusGroup
+
+	column TotalPrinted
+		dataType: double
+		formatString: €#,0.00
+		summarizeBy: sum
+		lineageTag: b1ae3324-5981-5859-9e57-aa3547bb974d
+		sourceColumn: TotalPrinted
+
+	column AmountAtRisk
+		dataType: double
+		formatString: €#,0.00
+		summarizeBy: sum
+		lineageTag: 3d36ecc1-cef4-526b-ae03-54067ca6d138
+		sourceColumn: AmountAtRisk
+
+	column OverbilledLines
+		dataType: int64
+		formatString: #,0
+		summarizeBy: sum
+		lineageTag: 3b47744a-770b-5d52-bb29-db5113387e47
+		sourceColumn: OverbilledLines
+
+	partition InvoiceAudit = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(DataFolder & "\InvoiceAudit.parquet")),
+				    Typed = Table.TransformColumnTypes(Source, {{"SupplierCode", type text}, {"Supplier", type text}, {"InvoiceNumber", type text}, {"InvoiceDate", type date}, {"SourceFile", type text}, {"Status", type text}, {"StatusGroup", type text}, {"TotalPrinted", type number}, {"AmountAtRisk", type number}, {"OverbilledLines", Int64.Type}})
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

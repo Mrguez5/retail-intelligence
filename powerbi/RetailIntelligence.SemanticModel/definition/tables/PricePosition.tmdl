@@ -1,0 +1,130 @@
+table PricePosition
+	lineageTag: d8fc55e1-b3e5-5eec-9ea6-9c9a622e00b4
+
+	measure 'Price Gap' =
+			VAR GapRows = FILTER ( PricePosition, NOT ISBLANK ( PricePosition[PriceGap] ) )
+			RETURN
+			    DIVIDE ( SUMX ( GapRows, PricePosition[PriceGap] * PricePosition[Units] ), SUMX ( GapRows, PricePosition[Units] ) )
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: Price
+		lineageTag: a50dc4dc-a9f7-5819-87e2-d09c732300d7
+
+	measure 'Units per Product-Week' = CALCULATE ( AVERAGE ( PricePosition[Units] ), KEEPFILTERS ( PricePosition[PriceBand] <> "No sales" ) )
+		formatString: 0.00
+		displayFolder: Price
+		lineageTag: 48babe02-fd04-50b3-bcf3-520392d3b88b
+
+	measure 'Gap Last 4 Weeks' =
+			VAR LastWeek = CALCULATE ( MAX ( PricePosition[WeekStart] ), ALL ( PricePosition ) )
+			RETURN
+			    CALCULATE ( [Price Gap], PricePosition[WeekStart] >= LastWeek - 21 )
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: Price
+		lineageTag: 6614684d-54dd-54cf-8640-02becb96fc6d
+
+	measure 'Units Last 4 Weeks' =
+			VAR LastWeek = CALCULATE ( MAX ( PricePosition[WeekStart] ), ALL ( PricePosition ) )
+			RETURN
+			    CALCULATE ( SUM ( PricePosition[Units] ), PricePosition[WeekStart] >= LastWeek - 21 )
+		formatString: #,0
+		displayFolder: Price
+		lineageTag: c719299a-0e8a-593f-aeb0-cae2e3a000ce
+
+	measure 'Titles Much Dearer' = COUNTROWS ( FILTER ( VALUES ( PricePosition[Sku] ), [Gap Last 4 Weeks] > 0.10 ) )
+		formatString: #,0
+		displayFolder: Price
+		lineageTag: 4965664f-d4cb-537a-94a0-5cca26df766c
+
+	measure 'Sales Lost When Much Dearer' =
+			VAR MuchDearer = CALCULATE ( [Units per Product-Week], PricePosition[PriceBand] = "Much dearer (> 10 %)" )
+			VAR Cheaper = CALCULATE ( [Units per Product-Week], PricePosition[PriceBand] = "Cheaper (< -3 %)" )
+			RETURN DIVIDE ( MuchDearer, Cheaper ) - 1
+		formatString: +0%;-0%;0%
+		displayFolder: Price
+		lineageTag: 015534f7-e8f8-5f28-88b6-780a27dd8b97
+
+	measure 'Gap Color' =
+			VAR G = [Gap Last 4 Weeks]
+			RETURN SWITCH ( TRUE (), ISBLANK ( G ), BLANK (), G > 0.10, "#b91c1c", G > 0.03, "#b45309", G < -0.03, "#15803d", "#475569" )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: 8529a2e3-40f8-5e53-a3d3-ceac86180970
+
+	measure 'Gap KPI Color' = IF ( [Gap Last 4 Weeks] > 0, "#f87171", "#4ade80" )
+		isHidden
+		displayFolder: Formatting
+		lineageTag: 0f4c5f75-b7c0-5045-b5a5-5ccf07abcf55
+
+	column WeekStart
+		dataType: dateTime
+		formatString: Short Date
+		summarizeBy: none
+		lineageTag: e6389a16-484e-5c1f-978e-ad6e4bb506c5
+		sourceColumn: WeekStart
+
+	column Sku
+		dataType: string
+		isHidden
+		summarizeBy: none
+		lineageTag: 781af838-b179-5616-bf66-e4f7d6416a42
+		sourceColumn: Sku
+
+	column Units
+		dataType: int64
+		formatString: #,0
+		summarizeBy: sum
+		lineageTag: 61190bfa-e047-5314-9ab8-dd3bf9a098ff
+		sourceColumn: Units
+
+	column NetRevenue
+		dataType: double
+		formatString: €#,0
+		summarizeBy: sum
+		lineageTag: 298adb46-d516-5c2f-b64d-ab394e152a7d
+		sourceColumn: NetRevenue
+
+	column OurPrice
+		dataType: double
+		formatString: €#,0.00
+		summarizeBy: none
+		lineageTag: a23f6866-3b33-5538-ac19-41493e577ffd
+		sourceColumn: OurPrice
+
+	column CompetitorPrice
+		dataType: double
+		formatString: €#,0.00
+		summarizeBy: none
+		lineageTag: d9a51483-008b-5736-b1e0-2511ad911c78
+		sourceColumn: CompetitorPrice
+
+	column PriceGap
+		dataType: double
+		formatString: +0.0%;-0.0%;0.0%
+		summarizeBy: none
+		lineageTag: 1f8599a0-6b51-510d-926a-29a7b0836dfc
+		sourceColumn: PriceGap
+
+	column PriceBand
+		dataType: string
+		sortByColumn: PriceBandOrder
+		summarizeBy: none
+		lineageTag: c63a351d-44e2-5895-97bf-609feefd22a0
+		sourceColumn: PriceBand
+
+	column PriceBandOrder
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: 4c8f6b37-9f09-5e59-8e1f-3caa86716b8f
+		sourceColumn: PriceBandOrder
+
+	partition PricePosition = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(DataFolder & "\PricePosition.parquet")),
+				    Typed = Table.TransformColumnTypes(Source, {{"WeekStart", type date}, {"Sku", type text}, {"Units", Int64.Type}, {"NetRevenue", type number}, {"OurPrice", type number}, {"CompetitorPrice", type number}, {"PriceGap", type number}, {"PriceBand", type text}, {"PriceBandOrder", Int64.Type}})
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

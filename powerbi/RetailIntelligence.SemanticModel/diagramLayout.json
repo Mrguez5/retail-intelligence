@@ -1,0 +1,126 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 1322.0049139230812,
+            "y": 296.4129435151084
+          },
+          "nodeIndex": "DataQuality",
+          "nodeLineageTag": "cc140849-6650-5658-a36e-6a4af33c8668",
+          "size": {
+            "height": 224,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 334.21841345225505,
+            "y": 553.85210542827781
+          },
+          "nodeIndex": "DimChannel",
+          "nodeLineageTag": "0d942359-31ce-5794-a2ed-1b255c20f250",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 795.20829457864477,
+            "y": 184.93064677624989
+          },
+          "nodeIndex": "DimDate",
+          "nodeLineageTag": "f88b99ee-d364-590b-89dc-0c87203fdfc6",
+          "size": {
+            "height": 224,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 620.08751588913935,
+            "y": 467.49991922126605
+          },
+          "nodeIndex": "DimProduct",
+          "nodeLineageTag": "d9f9c6c3-a99b-5dfa-b770-e41f3fa0042e",
+          "size": {
+            "height": 224,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 433.91357630837524,
+            "y": 107.83701280490709
+          },
+          "nodeIndex": "FactSales",
+          "nodeLineageTag": "b9187395-c774-5660-88b9-ad36e80e5b45",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1088.0049139230809,
+            "y": -50
+          },
+          "nodeIndex": "InvoiceAudit",
+          "nodeLineageTag": "a0207e25-95e2-5a4d-a38a-ec212f6f3887",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1061.3892988460416,
+            "y": 466.82588703021679
+          },
+          "nodeIndex": "PricePosition",
+          "nodeLineageTag": "d8fc55e1-b3e5-5eec-9ea6-9c9a622e00b4",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 50,
+            "y": 444.73499712018372
+          },
+          "nodeIndex": "Quarantine",
+          "nodeLineageTag": "b57f1dac-6fc9-5647-a042-00b8b4f18fd8",
+          "size": {
+            "height": 224,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "Todas las tablas",
+      "zoomValue": 100,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "Todas las tablas",
+  "defaultDiagram": "Todas las tablas"
+}

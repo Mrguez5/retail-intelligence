@@ -1,0 +1,51 @@
+table DimProduct
+	lineageTag: d9f9c6c3-a99b-5dfa-b770-e41f3fa0042e
+
+	column Sku
+		dataType: string
+		isKey
+		summarizeBy: none
+		lineageTag: 812606dd-94c8-5890-9e99-eef507067fd9
+		sourceColumn: Sku
+
+	column Title
+		dataType: string
+		summarizeBy: none
+		lineageTag: 13bbe106-d237-5bbb-a3e0-8c6442b475d5
+		sourceColumn: Title
+
+	column Category
+		dataType: string
+		summarizeBy: none
+		lineageTag: 7dc8178d-ffba-5909-8233-95e8f181551e
+		sourceColumn: Category
+
+	column Supplier
+		dataType: string
+		summarizeBy: none
+		lineageTag: 66708794-6889-5d58-a9d0-261e9892667c
+		sourceColumn: Supplier
+
+	column ListPrice
+		dataType: double
+		formatString: €#,0.00
+		summarizeBy: none
+		lineageTag: 3c513581-111c-54b8-86a1-ccede6346bc4
+		sourceColumn: ListPrice
+
+	column HasCompetitorLink
+		dataType: boolean
+		summarizeBy: none
+		lineageTag: dff42237-e514-56db-bdae-af1f0deeed73
+		sourceColumn: HasCompetitorLink
+
+	partition DimProduct = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(DataFolder & "\DimProduct.parquet")),
+				    Typed = Table.TransformColumnTypes(Source, {{"Sku", type text}, {"Title", type text}, {"Category", type text}, {"Supplier", type text}, {"ListPrice", type number}, {"HasCompetitorLink", type logical}})
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

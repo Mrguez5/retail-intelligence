@@ -29,7 +29,9 @@ Four tabs, built by `python run.py dashboard` from the gold layer:
 | **Data quality** | Lines set aside by reason, the raw = clean + quarantined reconciliation, and every data-quality check |
 
 Charts are hand-built SVG with hover and keyboard tooltips, a table view for every chart, and light and dark themes
-(colour palette validated for colour-vision deficiency). More screenshots: [prices](docs/img/dashboard_prices.png) · [invoices](docs/img/dashboard_invoices.png) · [data quality](docs/img/dashboard_quality.png) · [dark theme](docs/img/dashboard_overview_dark.png).
+(colour palette validated for colour-vision deficiency). The same views also exist as a **Power BI project**
+(semantic model with DAX measures + report, generated as PBIP): see [powerbi/README.md](powerbi/README.md).
+More screenshots: [prices](docs/img/dashboard_prices.png) · [invoices](docs/img/dashboard_invoices.png) · [data quality](docs/img/dashboard_quality.png) · [dark theme](docs/img/dashboard_overview_dark.png).
 
 ---
 
@@ -164,6 +166,7 @@ python run.py all                 # generate sources → bronze → dbt build (m
 | `python run.py docs` | Regenerates [docs/data_dictionary.md](docs/data_dictionary.md) from the dbt YAML descriptions and the warehouse (types, keys, row counts, tests) |
 | `python run.py docs --pdf` | Same, plus a styled HTML page and an A4 landscape PDF (printed with Edge or Chrome, no extra package) |
 | `python run.py dashboard` | Rebuilds the dashboard [docs/index.html](docs/index.html) from the gold layer (also done by `all`) |
+| `python run.py powerbi` | Exports gold to Parquet and generates the Power BI project `powerbi/RetailIntelligence.pbip` (open it, then Home > Refresh) |
 | `python run.py screenshots` | 1600×1200 screenshots of every tab, light and dark, into `docs/img/` (Edge or Chrome) |
 
 The warehouse is a single file, `data/warehouse/retail.duckdb`. You can open it with the DuckDB

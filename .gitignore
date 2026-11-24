@@ -14,3 +14,7 @@ logs/
 docs/*.html
 !docs/index.html
 .pytest_cache/
+# Power BI Desktop local files
+powerbi/**/.pbi/localSettings.json
+powerbi/**/.pbi/cache.abf
+data/powerbi/

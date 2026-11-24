@@ -37,6 +37,18 @@ def _rows(con, sql: str) -> list[dict]:
     return out
 
 
+PRICIER_LAST4 = """
+    with last4 as (
+        select * from gold.mart_price_position_weekly
+        where week_start >= (select max(week_start) - interval 21 day from gold.mart_price_position_weekly)
+          and price_gap_pct is not null
+    )
+    select sku, any_value(title) as title, round(avg(our_avg_price_eur), 2) as our_price,
+           round(avg(competitor_avg_price_eur), 2) as competitor_price,
+           round(sum(price_gap_pct * units) / sum(units), 3) as gap, sum(units) as units
+    from last4 group by 1 having sum(price_gap_pct * units) / sum(units) > 0.10"""
+
+
 def collect(con) -> dict:
     q = lambda sql: _rows(con, sql)
     data = {
@@ -61,17 +73,9 @@ def collect(con) -> dict:
                    round(avg(price_gap_pct), 3) as avg_gap
             from gold.mart_price_position_weekly where price_band <> 'no sales'
             group by 1"""),
-        "pricier_now": q("""
-            with last4 as (
-                select * from gold.mart_price_position_weekly
-                where week_start >= (select max(week_start) - interval 21 day from gold.mart_price_position_weekly)
-            )
-            select sku, any_value(title) as title, round(avg(our_avg_price_eur), 2) as our_price,
-                   round(avg(competitor_avg_price_eur), 2) as competitor_price,
-                   round(avg(price_gap_pct), 3) as gap, sum(units) as units
-            from last4 where price_gap_pct is not null
-            group by 1 having avg(price_gap_pct) > 0.10
-            order by gap desc limit 12"""),
+        # gap over the last 4 weeks, weighted by units (same definition as the Power BI measure)
+        "pricier_now": q(PRICIER_LAST4 + " order by gap desc limit 12"),
+        "pricier_count": q("select count(*) as n from (" + PRICIER_LAST4 + ")")[0]["n"],
         "invoices": q("""
             select supplier_code, invoice_number, invoice_date, audit_status, total_printed,
                    overbilled_lines, amount_at_risk_eur

@@ -1,0 +1,52 @@
+table DataQuality
+	lineageTag: cc140849-6650-5658-a36e-6a4af33c8668
+
+	column Source
+		dataType: string
+		summarizeBy: none
+		lineageTag: 9bc2d073-e99e-525e-9a18-428fcc6ea6ab
+		sourceColumn: Source
+
+	column Rule
+		dataType: string
+		summarizeBy: none
+		lineageTag: 08c6f752-83da-510b-82ac-006efeafd33e
+		sourceColumn: Rule
+
+	column RowsChecked
+		dataType: int64
+		formatString: #,0
+		summarizeBy: none
+		lineageTag: b00b00f0-ad3a-5442-b5be-6f5df183bc53
+		sourceColumn: RowsChecked
+
+	column RowsFailed
+		dataType: int64
+		formatString: #,0
+		summarizeBy: none
+		lineageTag: d4ea7936-cffd-5246-8b62-3fe604877c5f
+		sourceColumn: RowsFailed
+
+	column Share
+		dataType: double
+		formatString: 0.00%
+		summarizeBy: none
+		lineageTag: ed4ceea4-ddd2-5d66-8c15-2d6747ed6451
+		sourceColumn: Share
+
+	column Action
+		dataType: string
+		summarizeBy: none
+		lineageTag: c2ff0fb4-0f2c-5521-867f-41cd98632bf5
+		sourceColumn: Action
+
+	partition DataQuality = m
+		mode: import
+		source =
+				let
+				    Source = Parquet.Document(File.Contents(DataFolder & "\DataQuality.parquet")),
+				    Typed = Table.TransformColumnTypes(Source, {{"Source", type text}, {"Rule", type text}, {"RowsChecked", Int64.Type}, {"RowsFailed", Int64.Type}, {"Share", type number}, {"Action", type text}})
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

@@ -135,7 +135,7 @@ footer { color: var(--text-muted); font-size: 12.5px; margin-top: 28px; border-t
         <div class="chart" id="chBands"></div></div>
     </div>
     <div class="card"><h2>Still much dearer than the competitor</h2>
-      <p class="desc">Average over the last 4 weeks, gap above 10 %: candidates for the next repricing.</p>
+      <p class="desc">Gap over the last 4 weeks (weighted by units), above 10 %: the top candidates for the next repricing.</p>
       <div class="table-wrap" id="tblPricier"></div></div>
   </section>
 
@@ -421,7 +421,7 @@ function renderPrices() {
   const b = Object.fromEntries(DATA.bands.map(r => [r.price_band, r]));
   tile("priceTiles", { label: "Sales lost when much dearer", value: pctSigned(b["much pricier"].avg_units / b["cheaper"].avg_units - 1, 0),
     note: `${b["much pricier"].avg_units} vs ${b["cheaper"].avg_units} units per product-week` });
-  tile("priceTiles", { label: "Titles still >10 % dearer", value: num(DATA.pricier_now.length), note: "last 4 weeks" });
+  tile("priceTiles", { label: "Titles still >10 % dearer", value: num(DATA.pricier_count), note: `last 4 weeks · top ${DATA.pricier_now.length} listed below` });
 
   const idx = d => W.findIndex(r => r.week_start >= d);
   const notes = [{ index: idx("2026-03-30"), label: "Repricing" }, { index: idx("2026-07-27"), label: "Repricing" }].filter(n => n.index >= 0);

@@ -1,0 +1,299 @@
+{
+  "name": "Retail Intelligence Dark",
+  "dataColors": [
+    "#38bdf8",
+    "#f59e0b",
+    "#22c55e",
+    "#f472b6",
+    "#a78bfa",
+    "#fb923c",
+    "#2dd4bf",
+    "#f87171"
+  ],
+  "background": "#12203a",
+  "foreground": "#e6edf7",
+  "tableAccent": "#22c55e",
+  "good": "#22c55e",
+  "neutral": "#f59e0b",
+  "bad": "#f87171",
+  "maximum": "#22c55e",
+  "center": "#f59e0b",
+  "minimum": "#f87171",
+  "textClasses": {
+    "callout": {
+      "fontSize": 30,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#ffffff"
+    },
+    "title": {
+      "fontSize": 12,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#e6edf7"
+    },
+    "header": {
+      "fontSize": 12,
+      "fontFace": "Segoe UI Semibold",
+      "color": "#e6edf7"
+    },
+    "label": {
+      "fontSize": 10,
+      "fontFace": "Segoe UI",
+      "color": "#93a4bf"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#12203a"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#1f3459"
+              }
+            },
+            "radius": 12
+          }
+        ],
+        "dropShadow": [
+          {
+            "show": false
+          }
+        ],
+        "title": [
+          {
+            "show": true,
+            "fontColor": {
+              "solid": {
+                "color": "#e6edf7"
+              }
+            },
+            "fontSize": 12
+          }
+        ],
+        "subTitle": [
+          {
+            "show": false
+          }
+        ],
+        "categoryAxis": [
+          {
+            "labelColor": {
+              "solid": {
+                "color": "#93a4bf"
+              }
+            },
+            "titleColor": {
+              "solid": {
+                "color": "#93a4bf"
+              }
+            },
+            "gridlineColor": {
+              "solid": {
+                "color": "#1f3459"
+              }
+            }
+          }
+        ],
+        "valueAxis": [
+          {
+            "labelColor": {
+              "solid": {
+                "color": "#93a4bf"
+              }
+            },
+            "titleColor": {
+              "solid": {
+                "color": "#93a4bf"
+              }
+            },
+            "gridlineColor": {
+              "solid": {
+                "color": "#1f3459"
+              }
+            }
+          }
+        ],
+        "legend": [
+          {
+            "labelColor": {
+              "solid": {
+                "color": "#e6edf7"
+              }
+            }
+          }
+        ],
+        "labels": [
+          {
+            "color": {
+              "solid": {
+                "color": "#e6edf7"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#0a1222"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "outspace": [
+          {
+            "color": {
+              "solid": {
+                "color": "#0a1222"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "tableEx": {
+      "*": {
+        "columnHeaders": [
+          {
+            "fontColor": {
+              "solid": {
+                "color": "#93a4bf"
+              }
+            },
+            "backColor": {
+              "solid": {
+                "color": "#12203a"
+              }
+            },
+            "fontSize": 9,
+            "bold": true
+          }
+        ],
+        "values": [
+          {
+            "fontColorPrimary": {
+              "solid": {
+                "color": "#e6edf7"
+              }
+            },
+            "backColorPrimary": {
+              "solid": {
+                "color": "#12203a"
+              }
+            },
+            "fontColorSecondary": {
+              "solid": {
+                "color": "#e6edf7"
+              }
+            },
+            "backColorSecondary": {
+              "solid": {
+                "color": "#172a4a"
+              }
+            },
+            "fontSize": 10
+          }
+        ],
+        "grid": [
+          {
+            "gridHorizontal": true,
+            "gridHorizontalColor": {
+              "solid": {
+                "color": "#1f3459"
+              }
+            },
+            "gridVertical": false,
+            "outlineColor": {
+              "solid": {
+                "color": "#1f3459"
+              }
+            },
+            "rowPadding": 4
+          }
+        ],
+        "total": [
+          {
+            "fontColor": {
+              "solid": {
+                "color": "#e6edf7"
+              }
+            },
+            "backColor": {
+              "solid": {
+                "color": "#12203a"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "card": {
+      "*": {
+        "labels": [
+          {
+            "color": {
+              "solid": {
+                "color": "#ffffff"
+              }
+            },
+            "fontSize": 28
+          }
+        ],
+        "categoryLabels": [
+          {
+            "color": {
+              "solid": {
+                "color": "#93a4bf"
+              }
+            },
+            "fontSize": 11
+          }
+        ]
+      }
+    },
+    "slicer": {
+      "*": {
+        "items": [
+          {
+            "fontColor": {
+              "solid": {
+                "color": "#e6edf7"
+              }
+            },
+            "background": {
+              "solid": {
+                "color": "#12203a"
+              }
+            }
+          }
+        ],
+        "header": [
+          {
+            "fontColor": {
+              "solid": {
+                "color": "#93a4bf"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

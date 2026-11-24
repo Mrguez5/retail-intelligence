@@ -1,0 +1,25 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["DataFolder", "FactSales", "DimProduct", "DimDate", "DimChannel", "PricePosition", "InvoiceAudit", "Quarantine", "DataQuality"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table FactSales
+ref table DimProduct
+ref table DimDate
+ref table DimChannel
+ref table PricePosition
+ref table InvoiceAudit
+ref table Quarantine
+ref table DataQuality
+
+ref cultureInfo en-US

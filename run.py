@@ -9,6 +9,7 @@
     python run.py report --sql "select ..."   # any query against the warehouse
     python run.py ui           # browse every table in DuckDB's web UI (http://localhost:4213)
     python run.py dashboard    # build docs/index.html: the interactive dashboard (self-contained)
+    python run.py powerbi      # export gold to Parquet + generate the Power BI project (powerbi/*.pbip)
     python run.py docs         # regenerate docs/data_dictionary.md (tables, columns, types, keys)
     python run.py docs --pdf   # ... and also docs/data_dictionary.html + .pdf (A4 landscape)
 """
@@ -104,7 +105,7 @@ def cmd_scrape() -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report", "ui", "docs", "dashboard", "screenshots"])
+    ap.add_argument("command", choices=["generate", "ingest", "transform", "all", "scrape", "report", "ui", "docs", "dashboard", "screenshots", "powerbi"])
     ap.add_argument("report", nargs="?", choices=list(REPORTS), help="report: show only this one")
     ap.add_argument("--sql", help="report: run your own query against the warehouse")
     ap.add_argument("--pdf", action="store_true", help="docs: also export a styled HTML page and a PDF")
@@ -118,6 +119,11 @@ def main() -> None:
     if args.command == "dashboard":
         from pipeline import dashboard
         print("dashboard written to", dashboard.build())
+        return
+    if args.command == "powerbi":
+        from pipeline import powerbi
+        print(powerbi.build())
+        print("Open powerbi/RetailIntelligence.pbip in Power BI Desktop and click Home > Refresh.")
         return
     if args.command == "screenshots":
         from pipeline import screenshots

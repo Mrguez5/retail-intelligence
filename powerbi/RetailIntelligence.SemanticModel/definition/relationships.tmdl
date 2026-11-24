@@ -1,0 +1,27 @@
+relationship 57c490d4-0fa1-5431-9e13-6b6153b79437
+	fromColumn: FactSales.Date
+	toColumn: DimDate.Date
+
+relationship 87b6c51d-df3f-57d9-a364-6f4cad53b1e5
+	fromColumn: FactSales.Sku
+	toColumn: DimProduct.Sku
+
+relationship 660814c5-fd98-5c2c-b40b-1b576b1f9ee5
+	fromColumn: FactSales.Channel
+	toColumn: DimChannel.Channel
+
+relationship 727dcace-ad9a-5ce3-9da6-e9ca6089c389
+	fromColumn: PricePosition.WeekStart
+	toColumn: DimDate.Date
+
+relationship ff90d402-1976-5c4a-b2cf-8daa8c6e06ec
+	fromColumn: PricePosition.Sku
+	toColumn: DimProduct.Sku
+
+relationship a54467ff-1499-50ad-95cd-3f6b60f03a5f
+	fromColumn: InvoiceAudit.InvoiceDate
+	toColumn: DimDate.Date
+
+relationship d611bab1-7267-53e4-9f95-d6e10e4894c6
+	fromColumn: Quarantine.Channel
+	toColumn: DimChannel.Channel
