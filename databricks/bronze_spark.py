@@ -10,17 +10,21 @@ Same rules as pipeline/bronze.py (the local DuckDB loader), same readers (pipeli
 - new columns are added and recorded in bronze._schema_changes.
 
 Writes are grouped per source (one delete + one append per table) to keep serverless usage low.
-Run as a Databricks job (spark_python_task):  bronze_spark.py <repo_root> <catalog>
+Run as a Databricks job (spark_python_task):  bronze_spark.py <repo_root|auto> <catalog>
+("auto": the repository is the folder above this file, e.g. when the job checks it out from Git)
 """
 from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import os
 import sys
 import uuid
 from pathlib import Path
 
-REPO_ROOT = sys.argv[1] if len(sys.argv) > 1 else "."
+REPO_ROOT = sys.argv[1] if len(sys.argv) > 1 else "auto"
+if REPO_ROOT == "auto":
+    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 CATALOG = sys.argv[2] if len(sys.argv) > 2 else "workspace"
 sys.path.insert(0, REPO_ROOT)
 
