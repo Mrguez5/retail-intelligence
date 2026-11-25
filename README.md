@@ -10,7 +10,7 @@ data tests**. The output answers three business questions:
 
 Runs from scratch in about 20 seconds on a laptop, for free. No cloud account needed.
 
-📊 **Dashboard**: [`docs/index.html`](docs/index.html), one self-contained page (open it from disk; no server, no external library). · 📖 **[Data dictionary](docs/data_dictionary.md)**: every table and column, with type, primary and foreign keys, grain, lineage and checks (also as a [PDF](docs/data_dictionary.pdf)).
+📊 **[Live dashboard](https://mrguez5.github.io/retail-intelligence/)** (GitHub Pages): [`docs/index.html`](docs/index.html), one self-contained page that also opens from disk (no server, no external library). · 📖 **[Data dictionary](docs/data_dictionary.md)**: every table and column, with type, primary and foreign keys, grain, lineage and checks (also as a [PDF](docs/data_dictionary.pdf)).
 
 > All companies, people and figures are fictional. The competitor catalogue is
 > [books.toscrape.com](https://books.toscrape.com), a public sandbox built for scraping practice.
