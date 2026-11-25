@@ -8,7 +8,9 @@ data tests**. The output answers three business questions:
 2. **Are suppliers billing what the contract says?**
 3. **Can we trust the numbers?** Every defect is counted, explained and traced to its source file.
 
-Runs from scratch in about 20 seconds on a laptop, for free. No cloud account needed.
+Runs from scratch in about 20 seconds on a laptop, for free. No cloud account needed, and the
+**same dbt project also runs on Databricks** (Delta tables, Unity Catalog, serverless job) with
+identical results: see [Run it on Databricks](#run-it-on-databricks).
 
 📊 **[Live dashboard](https://mrguez5.github.io/retail-intelligence/)** (GitHub Pages): [`docs/index.html`](docs/index.html), one self-contained page that also opens from disk (no server, no external library). · 📖 **[Data dictionary](docs/data_dictionary.md)**: every table and column, with type, primary and foreign keys, grain, lineage and checks (also as a [PDF](docs/data_dictionary.pdf)).
 
@@ -151,6 +153,7 @@ sale is flagged.
 - **Documentation as code**: table and column descriptions live in the dbt YAML (shared texts as dbt doc blocks); the data dictionary is generated from them plus the warehouse, so it cannot drift from the code
 - **Robustness tests** (pytest): the landing zone is damaged on purpose in an isolated copy and the results are checked
 - **Dashboard without dependencies**: SVG charts, hover/keyboard tooltips, table views, light/dark themes, palette checked for colour blindness
+- **One dbt project, two engines**: DuckDB locally and Databricks in the cloud, with the SQL that differs between them in dispatch macros ([`dbt/macros/cross_engine.sql`](dbt/macros/cross_engine.sql)) and a check that both give the same tables and figures
 - **CI**: GitHub Actions builds the whole platform (and the dashboard) from scratch, checks that a second ingest loads nothing and runs the robustness tests
 
 ## Run it
@@ -180,11 +183,52 @@ python run.py all                 # generate sources → bronze → dbt build (m
 The warehouse is a single file, `data/warehouse/retail.duckdb`. You can open it with the DuckDB
 CLI, DBeaver, Python or Power BI (ODBC).
 
+## Run it on Databricks
+
+The same pipeline runs on **Databricks** (tested on the free [Free Edition](https://docs.databricks.com/aws/en/getting-started/free-edition)):
+raw files in a **Unity Catalog Volume**, bronze as **Delta tables** written by PySpark, and the
+**same dbt models** for silver and gold on a SQL warehouse, orchestrated as one **serverless job**.
+
+```
+Volume (landing) ──► bronze task: PySpark → Delta ──► dbt_build task: silver + gold + 143 tests
+ /Volumes/<catalog>/bronze/landing    <catalog>.bronze.*       <catalog>.silver.* · <catalog>.gold.*
+```
+
+| Piece | What it does |
+|---|---|
+| [`databricks/upload_raw.py`](databricks/upload_raw.py) | Mirrors `data/raw` into the Volume (only new or changed files; removed files are removed) |
+| [`databricks/bronze_spark.py`](databricks/bronze_spark.py) | Bronze on Spark with the same rules as the local loader (hash-incremental, duplicate/removed/failed files logged, schema drift) and the same file readers ([`pipeline/readers.py`](pipeline/readers.py)) |
+| [`dbt/macros/cross_engine.sql`](dbt/macros/cross_engine.sql) | Everything DuckDB and Spark SQL spell differently: date parsing and formatting, day series, `* EXCLUDE`/`EXCEPT`, `UNION ALL BY NAME`, `IGNORE NULLS`, ... DuckDB keeps its ASOF join; Spark takes the latest observation with a window. Jaro-Winkler and Damerau-Levenshtein become Unity Catalog Python functions |
+| [`databricks/deploy.py`](databricks/deploy.py) | Uploads the code and the dbt project, (re)creates the job `bronze → dbt_build` and runs it |
+| [`databricks/compare_bronze.py`](databricks/compare_bronze.py), [`compare_gold.py`](databricks/compare_gold.py) | Check both engines: same rows per file in bronze, same row count in all 28 silver/gold tables, same business figures |
+
+Result: **144/144 dbt steps pass on Databricks**, and revenue, margin, money at risk, fuzzy
+matches, quarantine and data-quality counts are identical to DuckDB to the cent.
+
+![Unity Catalog lineage of gold.fct_sales on Databricks](docs/img/databricks_lineage.png)
+
+| Delta tables in Unity Catalog | The serverless job |
+|---|---|
+| ![Bronze, silver and gold schemas in the Unity Catalog explorer](docs/img/databricks_catalog.png) | ![The retail-intelligence jobs in Databricks Jobs & Pipelines](docs/img/databricks_jobs.png) |
+
+```bash
+# Python 3.11-3.13 (dbt-databricks), separate from the local venv
+python -m venv .venv-databricks
+.venv-databricks\Scripts\pip install dbt-databricks databricks-sdk duckdb
+# DATABRICKS_HOST, DATABRICKS_HTTP_PATH (SQL warehouse) and DATABRICKS_TOKEN as environment variables
+.venv-databricks\Scripts\python databricks/upload_raw.py
+.venv-databricks\Scripts\python databricks/deploy.py pipeline
+.venv-databricks\Scripts\python databricks/compare_gold.py
+```
+
+dbt can also run from your machine against the warehouse: `cd dbt && dbt build --target databricks --vars "{raw_dir: /Volumes/workspace/bronze/landing}"`.
+
 ## Project layout
 
 ```
 generators/          fictional sources: world.py (ground truth), sources.py, invoices.py (PDFs)
-pipeline/            bronze.py (ingestion), pdf_invoices.py, scraper.py, config.py
+pipeline/            bronze.py (ingestion), readers.py (shared file readers), pdf_invoices.py, scraper.py, config.py
+databricks/          the same pipeline on Databricks: Volume upload, PySpark bronze, job deployment, engine comparison
 dbt/models/silver/   staging, matching, quarantine, SCD2 histories
 dbt/models/gold/     dim_*, fct_*, mart_*
 dbt/tests/           reconciliation, SCD2 continuity, invoice arithmetic, injected-defects check
@@ -196,4 +240,4 @@ run.py               one entry point for every step
 
 - [x] Interactive dashboard (static, self-contained) — publish with GitHub Pages from `/docs` once the repo is public
 - [ ] Orchestration with Dagster (asset graph, schedules)
-- [ ] Databricks Free Edition variant (PySpark + Delta) of the silver/gold layers
+- [x] Databricks variant: PySpark + Delta bronze, the same dbt models for silver/gold, one serverless job, identical results
