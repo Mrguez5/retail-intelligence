@@ -28,7 +28,7 @@ audit as (
 )
 select
     s.month_start,
-    strftime(s.month_start, '%Y-%m')                          as year_month,
+    {{ format_date("s.month_start", "%Y-%m") }}                          as year_month,
     round(s.net_revenue_eur, 2)                               as net_revenue_eur,
     round(s.margin_eur, 2)                                    as margin_eur,
     round(s.margin_eur / nullif(s.net_revenue_eur, 0), 4)     as margin_pct,

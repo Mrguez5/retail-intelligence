@@ -50,10 +50,9 @@ runs as (
     union all
     -- runs are expected every Monday and Thursday from the start of the calendar to the last run
     select 'competitor_runs', 'missing_run', count(*)
-    from range((select min(date_day) from {{ ref('dim_date') }}),
-               (select max(run_date) from {{ ref('silver_competitor_runs') }}) + interval 1 day,
-               interval 1 day) t(d)
-    where isodow(d) in (1, 4)
+    from {{ day_series("(select min(date_day) from " ~ ref('dim_date') ~ ")",
+                       "(select max(run_date) from " ~ ref('silver_competitor_runs') ~ ")", correlated=false) }}
+    where {{ iso_dow('d') }} in (1, 4)
       and cast(d as date) not in (select run_date from {{ ref('silver_competitor_runs') }})
 ),
 stale_prices as (

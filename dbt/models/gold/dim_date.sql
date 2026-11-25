@@ -15,8 +15,8 @@ select
     cast(date_trunc('month', d) as date)    as month_start,
     year(d)                                 as year,
     month(d)                                as month,
-    strftime(d, '%Y-%m')                    as year_month,
-    isodow(d)                               as iso_weekday,
-    strftime(d, '%a')                       as weekday_name,
-    isodow(d) in (6, 7)                     as is_weekend
-from bounds, range(bounds.first_day, bounds.last_day + interval 1 day, interval 1 day) t(d)
+    {{ format_date("d", "%Y-%m") }}                    as year_month,
+    {{ iso_dow("d") }}                               as iso_weekday,
+    {{ format_date("d", "%a") }}                       as weekday_name,
+    {{ iso_dow("d") }} in (6, 7)                     as is_weekend
+from bounds, {{ day_series("bounds.first_day", "bounds.last_day") }}

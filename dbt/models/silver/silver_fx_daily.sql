@@ -17,14 +17,14 @@ needed as (
 ),
 calendar as (
     select cast(d as date) as rate_date
-    from needed, range(needed.first_day, needed.last_day + interval 1 day, interval 1 day) t(d)
+    from needed, {{ day_series("needed.first_day", "needed.last_day") }}
 ),
 filled as (
     select
         c.rate_date,
         v.eur_gbp                                                                   as rate_that_day,
-        last_value(v.eur_gbp ignore nulls) over w                                   as last_rate,
-        last_value(case when v.eur_gbp is not null then c.rate_date end ignore nulls) over w as last_rate_date,
+        {{ last_value_ignore_nulls("v.eur_gbp") }} over w                                   as last_rate,
+        {{ last_value_ignore_nulls("case when v.eur_gbp is not null then c.rate_date end") }} over w as last_rate_date,
         exists (select 1 from raw r where r.rate_date = c.rate_date
                                      and (r.eur_gbp is null or r.eur_gbp not between 0.5 and 1.5)) as is_rejected_rate
     from calendar c
@@ -33,8 +33,8 @@ filled as (
 )
 select
     rate_date,
-    case when date_diff('day', last_rate_date, rate_date) <= {{ var("max_fx_age_days") }} then last_rate end as eur_gbp,
+    case when {{ days_between("last_rate_date", "rate_date") }} <= {{ var("max_fx_age_days") }} then last_rate end as eur_gbp,
     rate_that_day is null                                  as is_carried_forward,
-    date_diff('day', last_rate_date, rate_date)            as days_since_rate,
+    {{ days_between("last_rate_date", "rate_date") }}            as days_since_rate,
     is_rejected_rate
 from filled

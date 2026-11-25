@@ -11,14 +11,14 @@ with l as (
         {{ parse_eur('b.amount') }}                    as line_amount_printed,
         h.layout,
         case h.layout
-            when 'northwind_en' then cast(try_strptime(h.invoice_date, '%d %b %Y') as date)
-            when 'paperleaf_es' then cast(try_strptime(h.invoice_date, '%d/%m/%Y') as date)
+            when 'northwind_en' then cast({{ try_parse_ts("h.invoice_date", "%d %b %Y") }} as date)
+            when 'paperleaf_es' then cast({{ try_parse_ts("h.invoice_date", "%d/%m/%Y") }} as date)
         end                                            as invoice_date
     from {{ source('bronze', 'invoice_lines') }} b
     join {{ source('bronze', 'invoice_headers') }} h using (_source_file)
 )
 select
-    l.* exclude (layout),
+    {{ star_except(['layout'], prefix='l.') }},
     s.supplier_code,
     c.unit_cost_eur                                         as unit_price_contract,
     round(l.unit_price_billed - c.unit_cost_eur, 2)         as unit_price_diff,

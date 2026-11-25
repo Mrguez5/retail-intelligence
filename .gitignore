@@ -1,4 +1,5 @@
 .venv/
+.venv-databricks/
 __pycache__/
 *.pyc
 # generated: rebuild with `python run.py all`

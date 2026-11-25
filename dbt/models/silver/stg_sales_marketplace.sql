@@ -4,7 +4,7 @@ select
     _source_file || ':' || _row_number                     as sale_line_id,
     'marketplace'                                          as channel,
     trim(no_pedido)                                        as order_id,
-    try_strptime(fecha, '%d/%m/%Y %H:%M')                  as sold_at,
+    {{ try_parse_ts("fecha", "%d/%m/%Y %H:%M") }}                  as sold_at,
     nullif(trim(ref_vendedor), '')                         as sku_raw,
     nullif(trim(titulo), '')                               as title_raw,
     try_cast(unidades as integer)                          as quantity,

@@ -14,5 +14,5 @@
 
 {# key used to match titles typed by people: no case, accents, punctuation or extra spaces #}
 {% macro title_key(col) -%}
-    trim(regexp_replace(lower(strip_accents(trim({{ col }}))), '[^a-z0-9]+', ' ', 'g'))
+    trim({{ regexp_replace_all(strip_accents_lower('trim(' ~ col ~ ')'), '[^a-z0-9]+', ' ') }})
 {%- endmacro %}

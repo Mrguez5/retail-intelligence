@@ -19,8 +19,6 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import logging
-import re
-import unicodedata
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,7 +28,6 @@ import duckdb
 import pandas as pd
 
 from . import config
-from .pdf_invoices import parse_invoice
 
 log = logging.getLogger("bronze")
 
@@ -52,42 +49,7 @@ class Source:
 
 
 # ------------------------------------------------------------------ readers
-def _snake(name: str) -> str:
-    name = unicodedata.normalize("NFKD", str(name)).encode("ascii", "ignore").decode()
-    name = re.sub(r"[^0-9a-zA-Z]+", "_", name).strip("_").lower()
-    return name or "col"
-
-
-def _as_text(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.rename(columns=_snake)
-    return df.astype(object).where(df.notna(), None).map(lambda v: None if v is None else str(v))
-
-
-def read_csv(path: Path) -> pd.DataFrame:
-    with open(path, encoding="utf-8-sig") as fh:
-        sep = ";" if fh.readline().count(";") > 0 else ","
-    return _as_text(pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False, encoding="utf-8-sig"))
-
-
-def read_excel(path: Path) -> pd.DataFrame:
-    return _as_text(pd.read_excel(path, sheet_name=0, dtype=object))
-
-
-def _single(table: str, fn: Callable[[Path], pd.DataFrame]) -> Callable[[Path], dict[str, pd.DataFrame]]:
-    return lambda p: {table: fn(p)}
-
-
-def read_invoice(path: Path) -> dict[str, pd.DataFrame]:
-    inv = parse_invoice(path)
-    header = pd.DataFrame([{
-        "layout": inv.layout, "supplier_name": inv.supplier_name, "invoice_number": inv.invoice_number,
-        "invoice_date": inv.invoice_date, "subtotal": inv.subtotal, "vat": inv.vat, "total": inv.total,
-        "line_count": str(len(inv.lines)),
-    }])
-    lines = pd.DataFrame(inv.lines)
-    lines.insert(0, "invoice_number", inv.invoice_number)
-    lines.insert(1, "line_no", [str(i) for i in range(1, len(lines) + 1)])
-    return {"invoice_headers": header, "invoice_lines": lines}
+from .readers import _single, read_csv, read_excel, read_invoice  # noqa: E402  (shared with Databricks)
 
 
 def sources() -> list[Source]:

@@ -21,10 +21,17 @@ joined as (
         o.price_gbp                                               as last_seen_price_gbp,
         o.in_stock,
         o.scraped_at                                              as observed_at,
-        date_diff('day', cast(o.scraped_at as date), g.date_day)  as days_since_observed
+        {{ days_between("cast(o.scraped_at as date)", "g.date_day") }}  as days_since_observed
     from grid g
+    {% if target.type == 'duckdb' -%}
     asof left join obs o
         on o.url = g.competitor_url and g.day_end > o.scraped_at
+    {%- else -%}
+    -- no ASOF join in Spark SQL: keep the latest observation before the end of the day
+    left join obs o
+        on o.url = g.competitor_url and o.scraped_at < g.day_end
+    qualify row_number() over (partition by g.sku, g.date_day order by o.scraped_at desc) = 1
+    {%- endif %}
 )
 select
     j.date_day,

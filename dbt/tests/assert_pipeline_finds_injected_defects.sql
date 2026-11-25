@@ -1,7 +1,7 @@
 {{ config(enabled=var('simulation')) }}  -- only meaningful on generated data
 -- The generator records every defect it injects; the pipeline must find exactly those
 with injected as (
-    select * from read_json_auto('{{ var("raw_dir") }}/_injected_defects.json')
+    select * from {{ read_json_file(var('raw_dir') ~ '/_injected_defects.json') }}
 ),
 found as (
     select
@@ -25,7 +25,7 @@ checks as (
     union all select 'competitor glitch rows',   i.competitor.glitch_rows,     f.competitor_glitches from injected i, found f
     union all select 'competitor partial runs',  i.competitor.partial_runs,    f.partial_runs        from injected i, found f
     union all select 'duplicate invoices',       1,                            f.duplicate_invoices  from injected i, found f
-    union all select 'invoice total errors',     len(i.invoices.total_errors), f.total_errors        from injected i, found f
+    union all select 'invoice total errors',     {{ array_length('i.invoices.total_errors') }}, f.total_errors        from injected i, found f
     union all select 'NWD overbilled lines',     i.invoices.overbilled_lines,  f.nwd_overbilled_lines from injected i, found f
 )
 select * from checks where expected is distinct from found   -- null-safe: a missing value fails too

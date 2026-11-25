@@ -4,7 +4,7 @@
 -- (The only outliers allowed are real typos: a price typed x10.)
 with clearance as (
     select i.clearance.sku as sku
-    from read_json_auto('{{ var("raw_dir") }}/_injected_defects.json') i
+    from {{ read_json_file(var('raw_dir') ~ '/_injected_defects.json') }} i
 )
 select c.sale_line_id, c.sale_date, c.unit_price_eur, c.reference_price_eur, c.reference_price_source
 from {{ ref('int_sales_checked') }} c

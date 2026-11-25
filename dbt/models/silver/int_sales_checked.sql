@@ -60,7 +60,7 @@ priced as (
 ),
 validated as (
     select
-        * exclude (history_price_eur, median_price_eur),
+        {{ star_except(['history_price_eur', 'median_price_eur']) }},
         coalesce(history_price_eur, median_price_eur, list_price_eur)        as reference_price_eur,
         case
             when history_price_eur is not null then 'erp_history'
@@ -85,12 +85,12 @@ validated as (
 ),
 resolved as (
     select
-        * exclude (dedup_rank),
+        {{ star_except(['dedup_rank']) }},
         row_number() over (partition by channel, dedup_key
                            order by (line_issue is null) desc, source_file desc) as dedup_rank
     from validated
 )
 select
-    * exclude (line_issue),
+    {{ star_except(['line_issue']) }},
     case when dedup_rank > 1 then 'duplicate_line' else line_issue end as dq_issue
 from resolved

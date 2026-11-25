@@ -6,10 +6,10 @@ with typed as (
     select
         _source_file || ':' || _row_number                     as sale_line_id,
         'store'                                                as channel,
-        cast(null as varchar)                                  as order_id,
-        coalesce(try_strptime(fecha, '%Y-%m-%d %H:%M:%S'),
-                 try_strptime(fecha, '%d/%m/%Y'))              as sold_at,
-        cast(null as varchar)                                  as sku_raw,
+        cast(null as {{ dbt.type_string() }})                                  as order_id,
+        coalesce({{ try_parse_ts("fecha", "%Y-%m-%d %H:%M:%S") }},
+                 {{ try_parse_ts("fecha", "%d/%m/%Y") }})              as sold_at,
+        cast(null as {{ dbt.type_string() }})                                  as sku_raw,
         nullif(trim(libro), '')                                as title_raw,
         try_cast(try_cast(cant as double) as integer)          as quantity,
         {{ parse_number('pvp') }}                              as unit_price_eur,
@@ -21,7 +21,7 @@ with typed as (
     from {{ source('bronze', 'sales_store') }}
 )
 select
-    * exclude (row_no),
+    {{ star_except(['row_no']) }},
     concat_ws('|', cast(sold_at as date), {{ title_key('title_raw') }}, quantity, unit_price_eur) || '#'
         || row_number() over (partition by source_file, cast(sold_at as date), {{ title_key('title_raw') }},
                                            quantity, unit_price_eur

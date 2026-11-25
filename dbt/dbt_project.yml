@@ -9,6 +9,10 @@ macro-paths: ["macros"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
+# Databricks only: create the Python functions the fuzzy title match needs (no-op on DuckDB)
+on-run-start:
+  - "{{ create_cross_engine_udfs() }}"
+
 vars:
   raw_dir: "{{ env_var('RI_RAW_DIR', 'data/raw') }}"   # set by run.py; default relative to the repo root
   data_start: "2026-01-01"      # sales dated before this are typing errors

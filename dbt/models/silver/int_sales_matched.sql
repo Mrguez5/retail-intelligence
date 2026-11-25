@@ -5,11 +5,7 @@
 --    If two catalogue titles are equally close, no product is chosen (match_ambiguous):
 --    e.g. "Fruits Basket, Vol. 4" and "Vol. 6" differ by only two characters.
 with unioned as (
-    select * from {{ ref('stg_sales_web') }}
-    union all by name
-    select * from {{ ref('stg_sales_marketplace') }}
-    union all by name
-    select * from {{ ref('stg_sales_store') }}
+    {{ union_all_by_name([ref('stg_sales_web'), ref('stg_sales_marketplace'), ref('stg_sales_store')]) }}
 ),
 products as (
     select sku, title_key from {{ ref('silver_products') }}
@@ -25,8 +21,8 @@ candidates as (
     select
         t.title_key,
         p.sku,
-        jaro_winkler_similarity(t.title_key, p.title_key) as score,
-        damerau_levenshtein(t.title_key, p.title_key)     as edits
+        {{ title_similarity('t.title_key', 'p.title_key') }} as score,
+        {{ title_edits('t.title_key', 'p.title_key') }}     as edits
     from unmatched_titles t
     cross join products p
 ),

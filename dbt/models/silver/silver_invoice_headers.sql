@@ -4,8 +4,8 @@ with h as (
         s.supplier_code,
         trim(b.invoice_number)                                    as invoice_number,
         case b.layout
-            when 'northwind_en' then cast(try_strptime(b.invoice_date, '%d %b %Y') as date)
-            when 'paperleaf_es' then cast(try_strptime(b.invoice_date, '%d/%m/%Y') as date)
+            when 'northwind_en' then cast({{ try_parse_ts("b.invoice_date", "%d %b %Y") }} as date)
+            when 'paperleaf_es' then cast({{ try_parse_ts("b.invoice_date", "%d/%m/%Y") }} as date)
         end                                                       as invoice_date,
         {{ parse_eur('b.subtotal') }}                             as subtotal_printed,
         {{ parse_eur('b.vat') }}                                  as vat_printed,
