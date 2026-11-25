@@ -33,6 +33,14 @@ Charts are hand-built SVG with hover and keyboard tooltips, a table view for eve
 (semantic model with DAX measures + report, generated as PBIP): see [powerbi/README.md](powerbi/README.md).
 More screenshots: [prices](docs/img/dashboard_prices.png) · [invoices](docs/img/dashboard_invoices.png) · [data quality](docs/img/dashboard_quality.png) · [dark theme](docs/img/dashboard_overview_dark.png).
 
+### Power BI version
+
+![Power BI overview: a one-screen command center](docs/img/powerbi_overview.png)
+
+Dark "wallboard" report with slicers on every page and cells coloured by measures. Pages for
+[prices](docs/img/powerbi_prices.png), [supplier invoices](docs/img/powerbi_invoices.png) and
+[data quality](docs/img/powerbi_quality.png); details in [powerbi/README.md](powerbi/README.md).
+
 ---
 
 ## Architecture
