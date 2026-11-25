@@ -190,8 +190,8 @@ raw files in a **Unity Catalog Volume**, bronze as **Delta tables** written by P
 **same dbt models** for silver and gold on a SQL warehouse, orchestrated as one **serverless job**.
 
 ```
-Volume (landing) ──► bronze task: PySpark → Delta ──► dbt_build task: silver + gold + 143 tests
- /Volumes/<catalog>/bronze/landing    <catalog>.bronze.*       <catalog>.silver.* · <catalog>.gold.*
+Volume (landing) ──► bronze: PySpark → Delta ──► dbt_build: silver + gold + 143 tests ──► refresh_dashboard
+ /Volumes/<catalog>/bronze/landing   <catalog>.bronze.*    <catalog>.silver.* · <catalog>.gold.*    AI/BI dashboard
 ```
 
 | Piece | What it does |
@@ -199,7 +199,8 @@ Volume (landing) ──► bronze task: PySpark → Delta ──► dbt_build ta
 | [`databricks/upload_raw.py`](databricks/upload_raw.py) | Mirrors `data/raw` into the Volume (only new or changed files; removed files are removed) |
 | [`databricks/bronze_spark.py`](databricks/bronze_spark.py) | Bronze on Spark with the same rules as the local loader (hash-incremental, duplicate/removed/failed files logged, schema drift) and the same file readers ([`pipeline/readers.py`](pipeline/readers.py)) |
 | [`dbt/macros/cross_engine.sql`](dbt/macros/cross_engine.sql) | Everything DuckDB and Spark SQL spell differently: date parsing and formatting, day series, `* EXCLUDE`/`EXCEPT`, `UNION ALL BY NAME`, `IGNORE NULLS`, ... DuckDB keeps its ASOF join; Spark takes the latest observation with a window. Jaro-Winkler and Damerau-Levenshtein become Unity Catalog Python functions |
-| [`databricks/deploy.py`](databricks/deploy.py) | Uploads the code and the dbt project, (re)creates the job `bronze → dbt_build` and runs it |
+| [`databricks/deploy.py`](databricks/deploy.py) | Syncs the code and the dbt project to a Volume, (re)creates the job `bronze → dbt_build → refresh_dashboard` and runs it. Each task runs the notebook [`databricks/job_task.py`](databricks/job_task.py); the dbt step authenticates as the job itself, so the job stores no secret |
+| [`databricks/dashboard.py`](databricks/dashboard.py) | Creates and publishes a 4-page AI/BI dashboard on the gold tables (overview, price vs competitor, supplier invoices, data quality) |
 | [`databricks/compare_bronze.py`](databricks/compare_bronze.py), [`compare_gold.py`](databricks/compare_gold.py) | Check both engines: same rows per file in bronze, same row count in all 28 silver/gold tables, same business figures |
 
 Result: **144/144 dbt steps pass on Databricks**, and revenue, margin, money at risk, fuzzy
