@@ -16,6 +16,8 @@ from databricks.sdk import WorkspaceClient
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = os.environ.get("RI_DATABRICKS_CATALOG", "workspace")
+# the local warehouse: <repo>/data, or the isolated copy RI_DATA_DIR points to (as in run.py)
+LOCAL_DB = Path(os.environ.get("RI_DATA_DIR", ROOT / "data")).resolve() / "warehouse" / "retail.duckdb"
 
 FIGURES = {   # name -> SQL with {s} = schema prefix of the engine ('' for DuckDB, 'workspace.' for Databricks)
     "net revenue EUR": "select round(sum(net_revenue_eur), 2) from {s}gold.fct_sales",
@@ -50,7 +52,7 @@ def norm(v):
 
 def main() -> int:
     w = WorkspaceClient()
-    con = duckdb.connect(str(ROOT / "data" / "warehouse" / "retail.duckdb"), read_only=True)
+    con = duckdb.connect(str(LOCAL_DB), read_only=True)
     tables = [r for r in con.execute("select table_schema, table_name from information_schema.tables "
                                      "where table_schema in ('silver', 'gold') order by 1, 2").fetchall()]
     ok = True

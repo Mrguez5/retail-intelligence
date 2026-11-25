@@ -16,6 +16,8 @@ from databricks.sdk import WorkspaceClient
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = os.environ.get("RI_DATABRICKS_CATALOG", "workspace")
+# the local warehouse: <repo>/data, or the isolated copy RI_DATA_DIR points to (as in run.py)
+LOCAL_DB = Path(os.environ.get("RI_DATA_DIR", ROOT / "data")).resolve() / "warehouse" / "retail.duckdb"
 TABLES = ["erp_products", "erp_price_changes", "contract_prices", "fx_rates", "competitor_snapshots",
           "sales_web", "sales_marketplace", "sales_store", "invoice_headers", "invoice_lines"]
 
@@ -30,9 +32,10 @@ def remote(w: WorkspaceClient, sql: str) -> list[list]:
 
 def main() -> int:
     w = WorkspaceClient()
-    con = duckdb.connect(str(ROOT / "data" / "warehouse" / "retail.duckdb"), read_only=True)
+    con = duckdb.connect(str(LOCAL_DB), read_only=True)
     union = " union all ".join(f"select '{t}', _source_file, count(*) from {{s}}.{t} group by 2" for t in TABLES)
-    local = {(t, f): n for t, f, n in con.execute(union.format(s="bronze")).fetchall()}
+    # files are named from the landing zone down (".../raw/sales/web/x.csv"), wherever the copy lives
+    local = {(t, "data/raw/" + f.split("raw/", 1)[1]): n for t, f, n in con.execute(union.format(s="bronze")).fetchall()}
     dbx = {(t, f): int(n) for t, f, n in remote(w, union.format(s=f"{CATALOG}.bronze"))}
 
     ok = True
