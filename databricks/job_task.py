@@ -21,6 +21,7 @@ import sys
 dbutils.widgets.text("step", "bronze")
 dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("warehouse_id", "")
+dbutils.widgets.text("simulation", "true")   # "false": data that is not the full generated dataset
 STEP = dbutils.widgets.get("step")
 CATALOG = dbutils.widgets.get("catalog")
 CODE = f"/Volumes/{CATALOG}/bronze/code"
@@ -50,7 +51,10 @@ if STEP == "dbt":
     os.environ["RI_DATABRICKS_CATALOG"] = CATALOG
     project = f"{WORK}/dbt"
     common = ["--project-dir", project, "--profiles-dir", project, "--target", "databricks"]
-    for args in (["debug"], ["build", "--vars", f"{{raw_dir: /Volumes/{CATALOG}/bronze/landing}}"]):
+    simulation = "false" if dbutils.widgets.get("simulation").lower() == "false" else "true"
+    dbt_vars = f"{{raw_dir: /Volumes/{CATALOG}/bronze/landing, simulation: {simulation}}}"
+    print(f"dbt vars: {dbt_vars}")
+    for args in (["debug"], ["build", "--vars", dbt_vars]):
         result = dbtRunner().invoke(args[:1] + common + args[1:])
         if not result.success:
             raise RuntimeError(f"dbt {args[0]} failed: {result.exception or 'see the log above'}")

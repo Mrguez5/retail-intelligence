@@ -3,6 +3,7 @@
     .venv-databricks/Scripts/python databricks/deploy.py pipeline   # bronze -> dbt build -> dashboard refresh
     .venv-databricks/Scripts/python databricks/deploy.py bronze     # only the bronze task
     .venv-databricks/Scripts/python databricks/deploy.py pipeline --no-run
+    .venv-databricks/Scripts/python databricks/deploy.py pipeline --real-data   # dbt with simulation: false
 
 What it sets up:
 - the code (pipeline/ readers, databricks/bronze_spark.py and the dbt project) is synced to the
@@ -109,9 +110,10 @@ def upsert_job(w: WorkspaceClient, what: str) -> int:
     return job_id
 
 
-def run(w: WorkspaceClient, job_id: int) -> None:
-    run_id = w.jobs.run_now(job_id=job_id).run_id
-    print(f"run started: {run_id}")
+def run(w: WorkspaceClient, job_id: int, real_data: bool = False) -> None:
+    params = {"simulation": "false"} if real_data else None
+    run_id = w.jobs.run_now(job_id=job_id, notebook_params=params).run_id
+    print(f"run started: {run_id}" + (" (real-data mode: simulation-only tests skipped)" if real_data else ""))
     while True:
         r = w.jobs.get_run(run_id)
         life = r.state.life_cycle_state.value if r.state and r.state.life_cycle_state else "?"
@@ -135,11 +137,13 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("what", choices=list(JOB_NAMES))
     ap.add_argument("--no-run", action="store_true")
+    ap.add_argument("--real-data", action="store_true",
+                    help="dbt with simulation: false (landing zone is not the full generated dataset)")
     args = ap.parse_args()
     w = WorkspaceClient()
     job_id = upsert_job(w, args.what)
     if not args.no_run:
-        run(w, job_id)
+        run(w, job_id, args.real_data)
 
 
 if __name__ == "__main__":

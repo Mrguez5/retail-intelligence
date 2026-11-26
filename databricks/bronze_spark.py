@@ -157,13 +157,15 @@ def main() -> None:
         loaded = {st["hash"]: rel for rel, st in state.items() if st["source"] == table and st["status"] == "LOADED"}
         frames: dict[str, list[pd.DataFrame]] = {t: [] for t in tables}
         to_replace, to_log = [], []
+        pending: dict[str, str] = {}                   # hash -> file, read in this batch, not yet written
 
         # 2) decide, file by file, exactly as the local loader does
         for path in files:
             rel = rel_of[path]
             digest = sha256(path)
             known = state.get(rel)
-            twin = loaded.get(digest) if skip_identical else None
+            # identical content loaded before, or earlier in this same batch (written at the end)
+            twin = (loaded.get(digest) or pending.get(digest)) if skip_identical else None
             if known and known["hash"] == digest and (
                     known["status"] == "LOADED" or (known["status"] == "DUPLICATE_FILE" and twin and twin != rel)):
                 summary["skipped"] += 1
@@ -190,6 +192,7 @@ def main() -> None:
                 rows += len(df)
             to_replace.append(rel)
             to_log.append((rel, digest, rows, known))
+            pending[digest] = rel
 
         # 3) one delete + one append per table for the whole source
         try:

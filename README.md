@@ -224,6 +224,30 @@ python -m venv .venv-databricks
 
 dbt can also run from your machine against the warehouse: `cd dbt && dbt build --target databricks --vars "{raw_dir: /Volumes/workspace/bronze/landing}"`.
 
+### Scenario: a new month arrives
+
+[`scenarios/october_arrives.py`](scenarios/october_arrives.py) replays the arrival of a month, on
+an isolated local copy or on the Databricks Volume: `rewind` takes October out of the landing zone,
+`arrive` brings its 16 files back with three surprises, and `restore` returns to the full data.
+
+| Surprise | What the pipeline does |
+|---|---|
+| The October web export sent again as `web_orders_2026-10 (1).csv` | one copy loaded, the other logged as `DUPLICATE_FILE`: sales are not doubled |
+| An invoice PDF cut off half way through the upload | logged as `FAILED` with the reason; every other file still loads |
+| Invoice NWD-2026-0020 sent twice | loaded, marked as a duplicate in silver, `BLOCK` in the invoice audit (€12,194.25 not paid twice) |
+
+```bash
+set RI_DATA_DIR=data/warehouse/demo& set RI_SIMULATION=0
+python scenarios/october_arrives.py rewind --target local    # then: run.py ingest + transform
+python scenarios/october_arrives.py arrive --target local    # then: run.py ingest + transform
+# Databricks: --target databricks, then databricks/deploy.py pipeline --real-data
+```
+
+`--real-data` (or `RI_SIMULATION=0`) skips the two tests that compare with the generator's register
+of injected defects, which only hold for the complete dataset. The scenario found one real bug: the
+Spark loader writes a whole source at the end of the batch, so two identical files arriving
+together were both loaded. It now also checks the files read earlier in the same batch.
+
 ## Project layout
 
 ```
